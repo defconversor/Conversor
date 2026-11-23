@@ -1,0 +1,2670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversor inteligente · Defontana</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --orange: #F26522;
+    --orange-light: #FEF0E8;
+    --orange-mid: #FDD5B8;
+    --orange-dark: #C24E14;
+    --black: #0F0F0F;
+    --gray-900: #1A1A1A;
+    --gray-700: #3D3D3D;
+    --gray-600: #525252;
+    --gray-500: #737373;
+    --gray-400: #9A9A9A;
+    --gray-200: #E5E5E3;
+    --gray-100: #F5F5F4;
+    --gray-50: #FAFAF9;
+    --white: #FFFFFF;
+    --green: #16A34A;
+    --green-light: #DCFCE7;
+    --red: #DC2626;
+    --red-light: #FEE2E2;
+    --amber: #D97706;
+    --amber-light: #FEF3C7;
+    --blue: #1A3A5C;
+    --blue-light: #EBF0F6;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --font: 'DM Sans', system-ui, sans-serif;
+    --mono: 'DM Mono', monospace;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+  }
+
+  html { font-family: var(--font); background: var(--white); color: var(--gray-900); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  body { min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    border-bottom: 1px solid var(--gray-200);
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    padding: 0 32px;
+    height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; color: var(--black); letter-spacing: -0.02em; text-decoration: none; }
+  .logo-mark { width: 26px; height: 26px; background: var(--orange); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 14px; height: 14px; fill: white; }
+  .header-divider { width: 1px; height: 18px; background: var(--gray-200); }
+  .header-subtitle { font-size: 13px; color: var(--gray-500); font-weight: 400; }
+  .header-badge { font-size: 11px; font-weight: 500; background: var(--orange-light); color: var(--orange-dark); padding: 2px 8px; border-radius: 20px; }
+
+  /* LAYOUT */
+  .app-layout { display: flex; min-height: calc(100vh - 52px); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px; min-width: 220px;
+    border-right: 1px solid var(--gray-200);
+    padding: 24px 0;
+    position: sticky; top: 52px; height: calc(100vh - 52px); overflow-y: auto;
+    background: var(--white);
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600; color: var(--gray-400);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 0 20px 8px;
+  }
+  .sidebar-item {
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 9px 20px; cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.1s, border-color 0.1s;
+    position: relative;
+  }
+  .sidebar-item:hover { background: var(--gray-50); }
+  .sidebar-item.active { background: var(--orange-light); border-left-color: var(--orange); }
+  .sidebar-item-name { font-size: 13px; font-weight: 500; color: var(--gray-900); }
+  .sidebar-item.active .sidebar-item-name { color: var(--orange-dark); }
+  .sidebar-item-desc { font-size: 11px; color: var(--gray-400); line-height: 1.4; }
+  .sidebar-item.active .sidebar-item-desc { color: var(--orange); opacity: 0.8; }
+  .sidebar-item.disabled { opacity: 0.5; cursor: default; }
+  .sidebar-item.disabled:hover { background: transparent; }
+  .soon-badge { font-size: 9px; font-weight: 600; background: var(--gray-100); color: var(--gray-500); padding: 1px 5px; border-radius: 3px; letter-spacing: 0.04em; text-transform: uppercase; position: absolute; top: 9px; right: 12px; }
+
+  /* MAIN */
+  .main { flex: 1; padding: 32px 40px; max-width: 900px; }
+
+  /* HERO */
+  .hero { margin-bottom: 32px; }
+  .hero-title { font-size: 22px; font-weight: 600; color: var(--black); letter-spacing: -0.03em; margin-bottom: 4px; }
+  .hero-sub { font-size: 14px; color: var(--gray-500); font-weight: 400; }
+  .hero-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray-400); margin-bottom: 8px; }
+  .hero-breadcrumb span { color: var(--gray-700); font-weight: 500; }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--gray-200); margin: 28px 0; }
+
+  /* UPLOAD ZONE */
+  .upload-section { margin-bottom: 28px; }
+  .upload-label { font-size: 12px; font-weight: 500; color: var(--gray-500); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .upload-label-num { width: 18px; height: 18px; background: var(--gray-900); color: white; border-radius: 50%; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .upload-btn-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .btn-upload {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px; font-size: 13px; font-weight: 500;
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md); cursor: pointer; color: var(--gray-700);
+    font-family: var(--font); transition: border-color 0.15s, box-shadow 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .btn-upload:hover { border-color: var(--gray-400); box-shadow: var(--shadow-md); }
+  .btn-upload svg { width: 14px; height: 14px; stroke: var(--gray-500); }
+  .upload-hint { font-size: 12px; color: var(--gray-400); }
+  .fmt-tags { display: flex; gap: 4px; }
+  .fmt-tag { font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 3px; background: var(--gray-100); color: var(--gray-500); font-family: var(--mono); }
+
+  /* FILE BAR */
+  .file-bar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 14px;
+    background: var(--gray-50); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    animation: fadeIn 0.2s ease;
+  }
+  .file-bar-icon { width: 32px; height: 32px; background: var(--orange-light); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .file-bar-icon svg { width: 16px; height: 16px; stroke: var(--orange); }
+  .file-bar-info { flex: 1; }
+  .file-bar-name { font-size: 13px; font-weight: 500; color: var(--gray-900); }
+  .file-bar-meta { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+  .file-bar-meta span { color: var(--gray-600); font-weight: 500; }
+  .btn-change { font-size: 12px; color: var(--gray-500); background: none; border: none; cursor: pointer; font-family: var(--font); padding: 4px 8px; border-radius: var(--radius-sm); transition: background 0.1s; }
+  .btn-change:hover { background: var(--gray-200); color: var(--gray-900); }
+
+  /* INVENTORY OPTIONS */
+  .inv-panel {
+    background: var(--blue-light);
+    border: 1px solid #C5D4E5;
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .inv-panel-label { font-size: 10px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+  .inv-panel input, .inv-panel select {
+    width: 100%; padding: 7px 10px;
+    border: 1px solid #C5D4E5; border-radius: var(--radius-sm);
+    font-size: 12px; background: var(--white); color: var(--gray-900);
+    font-family: var(--font); outline: none; transition: border-color 0.15s;
+  }
+  .inv-panel input:focus, .inv-panel select:focus { border-color: var(--blue); }
+  .tooltip-wrap { position: relative; display: flex; align-items: center; gap: 5px; }
+  .tooltip-q {
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--blue); color: white;
+    font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: help; flex-shrink: 0; margin-left: 2px;
+  }
+  .tooltip-box {
+    display: none; position: absolute;
+    bottom: calc(100% + 6px); left: 0;
+    background: var(--gray-900); color: white;
+    font-size: 11px; padding: 8px 12px; border-radius: var(--radius-sm);
+    width: 220px; line-height: 1.5; z-index: 50;
+    box-shadow: var(--shadow-md);
+    font-family: var(--font); font-weight: 400;
+  }
+  .tooltip-wrap:hover .tooltip-box { display: block; }
+
+  /* SECTION HEADER */
+  .section-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { display: flex; align-items: center; gap: 8px; }
+  .section-num { width: 20px; height: 20px; background: var(--gray-900); color: white; border-radius: 50%; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .section-name { font-size: 14px; font-weight: 600; color: var(--black); }
+  .section-desc { font-size: 12px; color: var(--gray-500); margin-top: 2px; max-width: 440px; }
+
+  /* FIELD MAPPING */
+  .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .field-card {
+    border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+    padding: 12px 14px; background: var(--white);
+    transition: border-color 0.15s;
+  }
+  .field-card:focus-within { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-light); }
+  .field-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .field-name { font-size: 12px; font-weight: 600; color: var(--gray-900); }
+  .field-badge { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; }
+  .field-badge.required { background: var(--orange-light); color: var(--orange-dark); }
+  .field-badge.optional { background: var(--gray-100); color: var(--gray-500); }
+  .field-select {
+    width: 100%; padding: 6px 28px 6px 10px; font-size: 12px;
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    background: var(--gray-50); color: var(--gray-900);
+    font-family: var(--font); appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239A9A9A' stroke-width='2'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center;
+    cursor: pointer; outline: none; transition: border-color 0.15s;
+  }
+  .field-select:focus { border-color: var(--orange); }
+  .field-default-row { margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+  .field-default-label { font-size: 10px; color: var(--gray-400); white-space: nowrap; }
+  .field-default-input {
+    flex: 1; padding: 4px 8px; font-size: 11px;
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    font-family: var(--mono); color: var(--gray-600); background: var(--gray-50); outline: none;
+  }
+  .field-default-input:focus { border-color: var(--orange); }
+  .field-autodetect { font-size: 10px; color: var(--green); font-weight: 500; margin-top: 5px; display: flex; align-items: center; gap: 3px; }
+  .field-autodetect svg { width: 10px; height: 10px; stroke: var(--green); }
+
+  /* + OPCIONES */
+  .more-options { position: relative; display: flex; justify-content: flex-end; margin: -4px 0 10px; }
+  .btn-more { font-size: 12px; font-weight: 500; color: var(--gray-700); background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; cursor: pointer; font-family: var(--font); padding: 6px 12px; }
+  .btn-more:hover { background: var(--gray-50); border-color: var(--gray-400); }
+  .more-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; min-width: 240px; background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.10); z-index: 20; padding: 4px; }
+  .more-menu button { width: 100%; text-align: left; font-size: 13px; color: var(--gray-900); background: none; border: none; cursor: pointer; font-family: var(--font); padding: 8px 10px; border-radius: 6px; }
+  .more-menu button:hover { background: var(--gray-100); }
+
+  /* EXTRA COLUMNS */
+  .extra-section { margin-top: 4px; }
+  .extra-toggle { font-size: 12px; color: var(--gray-500); background: none; border: none; cursor: pointer; font-family: var(--font); padding: 4px 0; display: flex; align-items: center; gap: 5px; }
+  .extra-toggle:hover { color: var(--gray-900); }
+  .extra-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .extra-card {
+    border: 1px dashed var(--gray-200); border-radius: var(--radius-md);
+    padding: 10px 12px; background: var(--gray-50);
+  }
+  .extra-col-name { font-size: 11px; font-weight: 500; color: var(--gray-600); font-family: var(--mono); margin-bottom: 6px; }
+
+  /* CONVERT BUTTON */
+  .btn-convert {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; font-size: 14px; font-weight: 500;
+    background: var(--orange); color: white; border: none;
+    border-radius: var(--radius-md); cursor: pointer; font-family: var(--font);
+    transition: background 0.15s, transform 0.1s;
+    box-shadow: 0 1px 3px rgba(242,101,34,0.3);
+  }
+  .btn-convert:hover { background: var(--orange-dark); }
+  .btn-convert:active { transform: scale(0.98); }
+  .btn-convert svg { width: 15px; height: 15px; stroke: white; }
+
+  /* RESULT CARDS */
+  .result-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; animation: fadeIn 0.3s ease; }
+  .metric-card { padding: 14px 16px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); background: var(--white); }
+  .metric-card.success { border-color: #BBF7D0; background: #F0FDF4; }
+  .metric-card.warn { border-color: #FDE68A; background: #FFFBEB; }
+  .metric-card.danger { border-color: #FECACA; background: #FEF2F2; }
+  .metric-val { font-size: 22px; font-weight: 600; color: var(--gray-900); letter-spacing: -0.03em; }
+  .metric-card.success .metric-val { color: var(--green); }
+  .metric-card.warn .metric-val { color: var(--amber); }
+  .metric-card.danger .metric-val { color: var(--red); }
+  .metric-label { font-size: 11px; color: var(--gray-400); margin-top: 2px; font-weight: 500; }
+
+  /* PREVIEW TABLE */
+  .preview-wrap { border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 24px; animation: fadeIn 0.3s ease 0.1s both; }
+  .preview-head { padding: 12px 16px; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: space-between; background: var(--gray-50); }
+  .preview-head-title { font-size: 12px; font-weight: 600; color: var(--gray-700); }
+  .preview-head-meta { font-size: 11px; color: var(--gray-400); font-family: var(--mono); }
+  .preview-scroll { overflow-x: auto; max-height: 320px; overflow-y: auto; }
+  table.preview { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.preview thead th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 600; color: var(--gray-500); letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid var(--gray-200); white-space: nowrap; background: var(--gray-50); position: sticky; top: 0; }
+  table.preview tbody tr { border-bottom: 1px solid var(--gray-100); transition: background 0.1s; }
+  table.preview tbody tr:last-child { border-bottom: none; }
+  table.preview tbody tr:hover { background: var(--gray-50); }
+  table.preview tbody td { padding: 7px 12px; color: var(--gray-700); white-space: nowrap; font-family: var(--mono); font-size: 11px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+  table.preview tbody td.highlight { color: var(--orange-dark); font-weight: 500; }
+
+  /* ERRORS TABLE */
+  .errors-wrap { border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
+  .error-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--gray-100); font-size: 12px; }
+  .error-item:last-child { border-bottom: none; }
+  .error-item.dup { background: var(--amber-light); }
+  .error-item.err { background: var(--red-light); }
+  .err-row-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+  .err-row-badge.dup { background: var(--amber); color: white; }
+  .err-row-badge.err { background: var(--red); color: white; }
+  .err-row-badge.warn { background: var(--amber); color: white; }
+  .error-item.warn-row { background: var(--amber-light); }
+  .err-msg { color: var(--gray-700); line-height: 1.5; }
+
+  /* DOWNLOAD BUTTONS */
+  .download-row { display: flex; gap: 10px; flex-wrap: wrap; animation: fadeIn 0.3s ease 0.2s both; }
+  .btn-dl {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; font-size: 13px; font-weight: 500;
+    border-radius: var(--radius-md); cursor: pointer; font-family: var(--font);
+    border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-700);
+    transition: border-color 0.15s, background 0.1s;
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+  }
+  .btn-dl:hover { border-color: var(--gray-400); background: var(--gray-50); }
+  .btn-dl.primary { background: var(--orange); color: white; border-color: var(--orange); box-shadow: 0 1px 3px rgba(242,101,34,0.3); }
+  .btn-dl.primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+  .btn-dl svg { width: 14px; height: 14px; stroke: currentColor; }
+  .btn-dl.errors { border-color: var(--red-light); color: var(--red); }
+  .btn-dl.errors:hover { background: var(--red-light); }
+
+  /* RESULT TABS */
+  .result-tabs { display: flex; gap: 2px; background: var(--gray-100); padding: 3px; border-radius: var(--radius-md); margin-bottom: 16px; animation: fadeIn 0.2s ease; }
+  .result-tab { flex: 1; padding: 6px 12px; border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 500; color: var(--gray-500); transition: all 0.1s; font-family: var(--font); }
+  .result-tab.active { background: var(--white); color: var(--gray-900); font-weight: 600; box-shadow: var(--shadow-sm); }
+  .result-tab-content { display: none; }
+  .result-tab-content.active { display: block; }
+
+  /* RESET LINK */
+  .reset-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; animation: fadeIn 0.2s ease; }
+  .btn-reset { font-size: 12px; color: var(--gray-400); background: none; border: none; cursor: pointer; font-family: var(--font); display: flex; align-items: center; gap: 5px; padding: 4px 0; }
+  .btn-reset:hover { color: var(--gray-700); }
+  .btn-reset svg { width: 12px; height: 12px; stroke: currentColor; }
+
+  /* EMPTY STATE */
+  .empty-state { padding: 48px 24px; text-align: center; }
+  .empty-icon { width: 40px; height: 40px; background: var(--gray-100); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .empty-icon svg { width: 20px; height: 20px; stroke: var(--gray-400); }
+  .empty-title { font-size: 14px; font-weight: 500; color: var(--gray-700); margin-bottom: 4px; }
+  .empty-desc { font-size: 12px; color: var(--gray-400); }
+
+  /* INLINE ALERT */
+  .inline-alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; line-height: 1.6; }
+  .inline-alert.warn { background: var(--amber-light); color: var(--amber); border: 1px solid #FDE68A; }
+  .inline-alert.info { background: var(--blue-light); color: var(--blue); border: 1px solid #C5D4E5; }
+  .inline-alert.success { background: var(--green-light); color: var(--green); border: 1px solid #BBF7D0; }
+
+  /* HIDDEN */
+  .hidden { display: none !important; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <a href="#" class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 14 14"><path d="M2 7 L7 2 L12 7 L7 12 Z"/></svg>
+      </div>
+      Defontana
+    </a>
+    <div class="header-divider"></div>
+    <span class="header-subtitle">Conversor inteligente · Importadores</span>
+  </div>
+  <div class="header-badge">v2.0</div>
+</header>
+
+<div class="app-layout">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section-label">Importadores</div>
+    <div class="sidebar-item active" data-importer="articulos" onclick="switchImporter('articulos')">
+      <div class="sidebar-item-name">Artículos</div>
+      <div class="sidebar-item-desc">Maestros de productos y artículos</div>
+    </div>
+    <div class="sidebar-item" data-importer="clientes" onclick="switchImporter('clientes')">
+      <div class="sidebar-item-name">Clientes</div>
+      <div class="sidebar-item-desc">Bases de clientes al formato ERP</div>
+    </div>
+    <div class="sidebar-item" data-importer="proveedores" onclick="switchImporter('proveedores')">
+      <div class="sidebar-item-name">Proveedores</div>
+      <div class="sidebar-item-desc">Proveedores para carga masiva</div>
+    </div>
+    <div class="sidebar-item" data-importer="inventario" onclick="switchImporter('inventario')">
+      <div class="sidebar-item-name">Mov. Inventario</div>
+      <div class="sidebar-item-desc">Ingresos y egresos masivos de stock</div>
+    </div>
+    <div class="divider" style="margin: 12px 0;"></div>
+    <div class="sidebar-section-label">Próximamente</div>
+    <div class="sidebar-item disabled">
+      <div class="soon-badge">Pronto</div>
+      <div class="sidebar-item-name">Contabilidad</div>
+      <div class="sidebar-item-desc">Asientos y movimientos contables</div>
+    </div>
+    <div class="sidebar-item disabled">
+      <div class="soon-badge">Pronto</div>
+      <div class="sidebar-item-name">Art. Tivendo</div>
+      <div class="sidebar-item-desc">Artículos formato Tivendo</div>
+    </div>
+    <div class="sidebar-item" data-importer="simple" onclick="switchImporter('simple')">
+      <div class="sidebar-item-name">Art. y Servicios (Simple)</div>
+      <div class="sidebar-item-desc">Importador simplificado ERP</div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-breadcrumb">Conversor universal <span id="breadcrumb-importer">→ Artículos</span></div>
+      <h1 class="hero-title">Convierte y valida en segundos</h1>
+      <p class="hero-sub">Sube tu archivo, revisa el mapeo automático y descarga el importador oficial Defontana.</p>
+    </div>
+
+    <!-- STEP 1: UPLOAD -->
+    <div id="upload-section" class="upload-section">
+      <div class="upload-label">
+        <div class="upload-label-num">1</div>
+        Sube tu archivo
+      </div>
+      <div id="upload-btn-wrap" class="upload-btn-wrap">
+        <button class="btn-upload" onclick="document.getElementById('file-input').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Seleccionar archivo
+        </button>
+        <span class="upload-hint">Máx. 25 MB ·</span>
+        <div class="fmt-tags" id="fmt-tags">
+          <span class="fmt-tag">XLSX</span>
+          <span class="fmt-tag">XLS</span>
+          <span class="fmt-tag">CSV</span>
+          <span class="fmt-tag">TXT</span>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="handleFile(event)">
+      </div>
+      <div id="cat-box" style="margin-top:12px;font-size:13px;color:var(--gray-600,#4b5563)">
+        <button type="button" class="btn-upload" style="padding:6px 12px;font-size:13px" onclick="document.getElementById('cat-input').click()">Cargar categorías de Defontana</button>
+        <span id="cat-status" style="margin-left:8px">Opcional: sube el export de categorías (código, nombre) para completar "Código categoría".</span>
+        <input type="file" id="cat-input" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="handleCatFile(event)">
+      </div>
+      <div id="file-bar" class="file-bar hidden">
+        <div class="file-bar-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+            <polyline points="13 2 13 9 20 9"></polyline>
+          </svg>
+        </div>
+        <div class="file-bar-info">
+          <div class="file-bar-name" id="file-bar-name">—</div>
+          <div class="file-bar-meta"><span id="file-bar-rows">—</span> filas · <span id="file-bar-cols">—</span> columnas</div>
+        </div>
+        <button class="btn-change" onclick="resetUpload()">Cambiar archivo</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: MAPPING -->
+    <div id="mapping-section" class="hidden">
+      <div class="divider"></div>
+
+      <!-- Inventory options panel -->
+      <div id="inv-panel" class="inv-panel hidden">
+        <div>
+          <div class="inv-panel-label">Tipo comprobante</div>
+          <input type="text" id="inv-tipo" value="AP" maxlength="10" placeholder="AP">
+        </div>
+        <div>
+          <div class="inv-panel-label">Fecha del movimiento</div>
+          <input type="date" id="inv-fecha">
+        </div>
+        <div>
+          <div class="inv-panel-label">
+            Bodega destino
+            <div class="tooltip-wrap">
+              <div class="tooltip-q">?</div>
+              <div class="tooltip-box">Código de la bodega destino en Defontana donde se registrarán los ingresos de stock. Debe coincidir con el código configurado en el sistema. Por defecto: BODEGACENTRAL.</div>
+            </div>
+          </div>
+          <input type="text" id="inv-bodega" value="BODEGACENTRAL" maxlength="50">
+        </div>
+        <div>
+          <div class="inv-panel-label">Centro de negocio <span style="font-weight:400;text-transform:none;color:var(--gray-400)">(opcional)</span></div>
+          <input type="text" id="inv-centro" maxlength="50" placeholder="Dejar vacío si no aplica">
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div>
+          <div class="section-title">
+            <div class="section-num">2</div>
+            <div class="section-name">Valida campos</div>
+          </div>
+          <div class="section-desc" style="padding-left:28px;">Confirma el mapeo automático de columnas antes de convertir.</div>
+        </div>
+        <button class="btn-convert" id="btn-convert" onclick="convertFile()">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 3 21 3 21 8"></polyline>
+            <line x1="4" y1="20" x2="21" y2="3"></line>
+          </svg>
+          Convertir y validar
+        </button>
+      </div>
+      <div class="more-options hidden" id="more-options">
+        <button class="btn-more" onclick="toggleMoreMenu(event)">+ opciones</button>
+        <div class="more-menu hidden" id="more-menu">
+          <button id="btn-pair-all" onclick="toggleAdvancedFields()">Parear todas las columnas</button>
+        </div>
+      </div>
+      <div class="fields-grid" id="fields-grid"></div>
+
+      <!-- Extra columns -->
+      <div id="extra-section" class="extra-section hidden">
+        <button class="extra-toggle" onclick="toggleExtra()">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg>
+          <span id="extra-toggle-text">Ver columnas no mapeadas del archivo</span>
+        </button>
+        <div id="extra-grid" class="extra-grid hidden"></div>
+      </div>
+    </div>
+
+    <!-- RESULTADO -->
+    <div id="result-section" class="hidden">
+      <div class="reset-bar">
+        <button class="btn-reset" onclick="resetToMapping()">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          Volver y editar mapeo
+        </button>
+      </div>
+
+      <div class="result-metrics" id="result-metrics"></div>
+
+      <div id="result-alerts"></div>
+
+      <!-- Tabs -->
+      <div class="result-tabs">
+        <button class="result-tab active" onclick="switchResultTab('valid', this)">✅ Registros válidos</button>
+        <button class="result-tab" onclick="switchResultTab('warns', this)" id="tab-btn-warns">⚠️ Advertencias</button>
+        <button class="result-tab" onclick="switchResultTab('errors', this)">❌ Errores / Duplicados</button>
+      </div>
+
+      <div id="tab-valid" class="result-tab-content active">
+        <div class="preview-wrap">
+          <div class="preview-head">
+            <div class="preview-head-title">Vista previa del importador</div>
+            <div class="preview-head-meta" id="preview-meta">—</div>
+          </div>
+          <div class="preview-scroll">
+            <table class="preview" id="preview-table"></table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-warns" class="result-tab-content">
+        <div id="warns-wrap" class="errors-wrap"></div>
+      </div>
+
+      <div id="tab-errors" class="result-tab-content">
+        <div id="errors-wrap" class="errors-wrap"></div>
+      </div>
+
+      <div class="download-row" id="download-row"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── SCHEMAS ────────────────────────────────────────────────────────────────
+const IMPORTERS = {
+  articulos: {
+    name: 'Artículos',
+    downloadType: 'txt+xls',
+    dedupKey: null,
+    fields: [
+      { key:'id_articulo',    label:'Código artículo',         req:true,  def:'',     detect:['codigo','sku','item','identificador','cod','code','ref','referencia','part','id'], cleanCode:true },
+      { key:'descripcion',    label:'Descripción artículo',    req:true,  def:'',     detect:['descripcion','nombre','glosa','detalle','name','desc','producto','articulo'], cleanSlash:true, cleanSemicolon:true, cleanText:true, maxLen:100 },
+      { key:'precio_venta',   label:'Precio de venta',         req:false, def:'',     detect:['precio','valor','pvp','price','venta','sale','precio_venta'], type:'price' },
+      { key:'costo',          label:'Costo de reposición',     req:false, def:'',     detect:['costo','cost','costo_repos','precio_costo','precio_compra','compra'], type:'price' },
+      { key:'unidad_inv',     label:'Unidad medida inv.',      req:false, def:'UN',   detect:['unidad','um','medida','unit','uom'], type:'um' },
+      { key:'unidad_venta',   label:'Unidad medida venta',     req:false, def:'UN',   detect:['unidad_venta','um_venta','unit_sale'], type:'um' },
+      { key:'cod_barras',     label:'Código barra interno',    req:false, def:'',     detect:['barcode','ean','barra','codigo_barra','codigobarra','ean13','upc'] },
+      { key:'stock_min',      label:'Stock mínimo',            req:false, def:'0',    detect:['stock_min','minimo','stock_minimo'], type:'num' },
+      { key:'stock_max',      label:'Stock máximo',            req:false, def:'0',    detect:['stock_max','maximo','stock_maximo'], type:'num' },
+      { key:'procedencia',    label:'Procedencia',             req:false, def:'NAC',  detect:['procedencia','origin'] },
+      { key:'moneda_ref',     label:'Moneda referencia',       req:false, def:'PESO', detect:['moneda','currency','moneda_ref'] },
+      // Columnas adicionales del formato ERP: solo con "+ opciones → Parear todas las columnas"
+      { key:'activo', label:'Artículo activo', req:false, advanced:true, def:'S', detect:['activo','articulo_activo','status'], type:'activo', exact:true },
+      { key:'fecha_creacion', label:'Fecha de creación', req:false, advanced:true, def:'today', detect:['fecha_de_creacion'], exact:true },
+      { key:'desc_det', label:'Descripción detallada del artículo', req:false, advanced:true, def:'', detect:['descripcion_detallada','descripcion_larga','descripcion_detallada_del_articulo'], exact:true, cleanSemicolon:true, cleanText:true, maxLen:500 },
+      { key:'comentario', label:'Comentario del artículo', req:false, advanced:true, def:'', detect:['comentario','observacion','nota','comentario_del_articulo'], exact:true, cleanSemicolon:true, cleanText:true, maxLen:200 },
+      { key:'costo_fob', label:'Costo de reposición FOB', req:false, advanced:true, def:'', detect:['costo_de_reposicion_fob'], exact:true },
+      { key:'factor', label:'Factor de internación', req:false, advanced:true, def:'', detect:['factor_de_internacion'], exact:true },
+      { key:'tasa', label:'Tasa de referencia', req:false, advanced:true, def:'', detect:['tasa_de_referencia'], exact:true },
+      { key:'cod_barra_prov', label:'Código de barras del proveedor', req:false, advanced:true, def:'', detect:['codigo_de_barras_del_proveedor'], exact:true },
+      { key:'moneda_compra', label:'Moneda de compra', req:false, advanced:true, def:'PESO', detect:['moneda_de_compra'], exact:true },
+      { key:'lotes', label:'Manejo de lotes', req:false, advanced:true, def:'N', detect:['manejo_de_lotes'], type:'sn', exact:true },
+      { key:'venc_lotes', label:'Fecha de vencimiento de lotes', req:false, advanced:true, def:'N', detect:['fecha_de_vencimiento_de_lotes'], type:'sn', exact:true },
+      { key:'series', label:'Manejo de series', req:false, advanced:true, def:'N', detect:['manejo_de_series'], type:'sn', exact:true },
+      { key:'disp_venta', label:'Disponible para la venta', req:false, advanced:true, def:'S', detect:['disponible_para_la_venta'], type:'sn', exact:true },
+      { key:'moneda_venta', label:'Moneda de venta', req:false, advanced:true, def:'PESO', detect:['moneda_de_venta'], exact:true },
+      { key:'imp_esp', label:'Impuesto específico adicional', req:false, advanced:true, def:'N', detect:['impuesto_especifico_adicional'], type:'sn', exact:true },
+      { key:'id_imp_esp', label:'Identificador del impuesto específico adicional', req:false, advanced:true, def:'', detect:['identificador_del_impuesto_especifico_adicional'], exact:true },
+      { key:'factor_esp', label:'Factor específico adicional', req:false, advanced:true, def:'', detect:['factor_especifico_adicional'], exact:true },
+      { key:'atrib1', label:'Identificador del atributo 1', req:false, advanced:true, def:'', detect:['identificador_del_atributo_1'], exact:true },
+      { key:'atrib2', label:'Identificador del atributo 2', req:false, advanced:true, def:'', detect:['identificador_del_atributo_2'], exact:true },
+      { key:'atrib3', label:'Identificador del atributo 3', req:false, advanced:true, def:'', detect:['identificador_del_atributo_3'], exact:true },
+      { key:'atrib4', label:'Identificador del atributo 4', req:false, advanced:true, def:'', detect:['identificador_del_atributo_4'], exact:true },
+      { key:'atrib5', label:'Identificador del atributo 5', req:false, advanced:true, def:'', detect:['identificador_del_atributo_5'], exact:true },
+      { key:'prop1', label:'Valor propiedad 1', req:false, advanced:true, def:'', detect:['valor_propiedad_1'], exact:true },
+      { key:'prop2', label:'Valor propiedad 2', req:false, advanced:true, def:'', detect:['valor_propiedad_2'], exact:true },
+      { key:'prop3', label:'Valor propiedad 3', req:false, advanced:true, def:'', detect:['valor_propiedad_3'], exact:true },
+      { key:'prop4', label:'Valor propiedad 4', req:false, advanced:true, def:'', detect:['valor_propiedad_4'], exact:true },
+      { key:'prop5', label:'Valor propiedad 5', req:false, advanced:true, def:'', detect:['valor_propiedad_5'], exact:true },
+      { key:'prop6', label:'Valor propiedad 6', req:false, advanced:true, def:'', detect:['valor_propiedad_6'], exact:true },
+      { key:'prop7', label:'Valor propiedad 7', req:false, advanced:true, def:'', detect:['valor_propiedad_7'], exact:true },
+      { key:'prop8', label:'Valor propiedad 8', req:false, advanced:true, def:'', detect:['valor_propiedad_8'], exact:true },
+      { key:'prop9', label:'Valor propiedad 9', req:false, advanced:true, def:'', detect:['valor_propiedad_9'], exact:true },
+      { key:'prop10', label:'Valor propiedad 10', req:false, advanced:true, def:'', detect:['valor_propiedad_10'], exact:true },
+      { key:'prop11', label:'Valor propiedad 11', req:false, advanced:true, def:'', detect:['valor_propiedad_11'], exact:true },
+      { key:'art_sust', label:'Identificador del artículo sustituto', req:false, advanced:true, def:'', detect:['identificador_del_articulo_sustituto'], exact:true },
+      { key:'prop12', label:'Valor propiedad 12', req:false, advanced:true, def:'', detect:['valor_propiedad_12'], exact:true },
+      { key:'unid_equiv', label:'Identificador de la unidad equivalente', req:false, advanced:true, def:'', detect:['identificador_de_la_unidad_equivalente'], exact:true },
+      { key:'prop13', label:'Valor propiedad 13', req:false, advanced:true, def:'', detect:['valor_propiedad_13'], exact:true },
+      { key:'prop14', label:'Valor propiedad 14', req:false, advanced:true, def:'', detect:['valor_propiedad_14'], exact:true },
+      { key:'prop15', label:'Valor propiedad 15', req:false, advanced:true, def:'', detect:['valor_propiedad_15'], exact:true },
+      { key:'prop16', label:'Valor propiedad 16', req:false, advanced:true, def:'', detect:['valor_propiedad_16'], exact:true },
+      { key:'prop17', label:'Valor propiedad 17', req:false, advanced:true, def:'', detect:['valor_propiedad_17'], exact:true },
+      { key:'prop18', label:'Valor propiedad 18', req:false, advanced:true, def:'', detect:['valor_propiedad_18'], exact:true },
+      { key:'prop19', label:'Valor propiedad 19', req:false, advanced:true, def:'', detect:['valor_propiedad_19'], exact:true },
+      { key:'prop20', label:'Valor propiedad 20', req:false, advanced:true, def:'', detect:['valor_propiedad_20'], exact:true },
+      { key:'prop21', label:'Valor propiedad 21', req:false, advanced:true, def:'', detect:['valor_propiedad_21'], exact:true },
+      { key:'prop22', label:'Valor propiedad 22', req:false, advanced:true, def:'', detect:['valor_propiedad_22'], exact:true },
+      { key:'prop23', label:'Valor propiedad 23', req:false, advanced:true, def:'', detect:['valor_propiedad_23'], exact:true },
+      { key:'prop24', label:'Valor propiedad 24', req:false, advanced:true, def:'', detect:['valor_propiedad_24'], exact:true },
+      { key:'prop25', label:'Valor propiedad 25', req:false, advanced:true, def:'', detect:['valor_propiedad_25'], exact:true },
+      { key:'cod_cat', label:'Código categoría', req:false, advanced:true, def:'', detect:['codigo_categoria','cod_categoria','categoria'], exact:true },
+      { key:'tipo_exist', label:'Tipo de Existencia', req:false, advanced:true, def:'', detect:['tipo_de_existencia'], exact:true },
+      { key:'cod_sunat', label:'Código Artículo SUNAT', req:false, advanced:true, def:'', detect:['codigo_articulo_sunat'], exact:true },
+    ],
+    outputFields: [
+      { key:'id_articulo' },
+      { key:'activo' },
+      { key:'fecha_creacion' },
+      { key:'descripcion' },
+      { key:'desc_det' },
+      { key:'comentario' },
+      { key:'costo_fob' },
+      { key:'factor' },
+      { key:'tasa' },
+      { key:'costo' },
+      { key:'stock_min' },
+      { key:'stock_max' },
+      { key:'unidad_inv' },
+      { key:'cod_barras' },
+      { key:'cod_barra_prov' },
+      { key:'procedencia' },
+      { key:'moneda_ref' },
+      { key:'moneda_compra' },
+      { key:'lotes' },
+      { key:'venc_lotes' },
+      { key:'series' },
+      { key:'disp_venta' },
+      { key:'moneda_venta' },
+      { key:'unidad_venta' },
+      { key:'imp_esp' },
+      { key:'id_imp_esp' },
+      { key:'factor_esp' },
+      { key:'precio_venta' },
+      { key:'atrib1' },
+      { key:'atrib2' },
+      { key:'atrib3' },
+      { key:'atrib4' },
+      { key:'atrib5' },
+      { key:'prop1' },
+      { key:'prop2' },
+      { key:'prop3' },
+      { key:'prop4' },
+      { key:'prop5' },
+      { key:'prop6' },
+      { key:'prop7' },
+      { key:'prop8' },
+      { key:'prop9' },
+      { key:'prop10' },
+      { key:'prop11' },
+      { key:'art_sust' },
+      { key:'prop12' },
+      { key:'unid_equiv' },
+      { key:'prop13' },
+      { key:'prop14' },
+      { key:'prop15' },
+      { key:'prop16' },
+      { key:'prop17' },
+      { key:'prop18' },
+      { key:'prop19' },
+      { key:'prop20' },
+      { key:'prop21' },
+      { key:'prop22' },
+      { key:'prop23' },
+      { key:'prop24' },
+      { key:'prop25' },
+      { key:'cod_cat' },
+      { key:'tipo_exist' },
+      { key:'cod_sunat' },
+    ],
+    outputHeaders: [
+      'Identificador del artículo',
+      'Artículo activo',
+      'Fecha de creación',
+      'Descripción del artículo',
+      'Descripción detallada del artículo',
+      'Comentario del artículo',
+      'Costo de reposición FOB',
+      'Factor de internación',
+      'Tasa de referencia',
+      'Costo de reposición',
+      'Stock mínimo',
+      'Stock máximo',
+      'Unidad de medida de inventario',
+      'Código de barras interno',
+      'Código de barras del proveedor',
+      'Procedencia del artículo',
+      'Moneda de referencia',
+      'Moneda de compra',
+      'Manejo de lotes',
+      'Fecha de vencimiento de lotes',
+      'Manejo de series',
+      'Disponible para la venta',
+      'Moneda de venta',
+      'Unidad de medida de ventas',
+      'Impuesto específico adicional',
+      'Identificador del impuesto específico adicional',
+      'Factor específico adicional',
+      'Precio de venta base del artículo',
+      'Identificador del atributo 1',
+      'Identificador del atributo 2',
+      'Identificador del atributo 3',
+      'Identificador del atributo 4',
+      'Identificador del atributo 5',
+      'Valor propiedad 1',
+      'Valor propiedad 2',
+      'Valor propiedad 3',
+      'Valor propiedad 4',
+      'Valor propiedad 5',
+      'Valor propiedad 6',
+      'Valor propiedad 7',
+      'Valor propiedad 8',
+      'Valor propiedad 9',
+      'Valor propiedad 10',
+      'Valor propiedad 11',
+      'Identificador del artículo sustituto',
+      'Valor propiedad 12',
+      'Identificador de la unidad equivalente',
+      'Valor propiedad 13',
+      'Valor propiedad 14',
+      'Valor propiedad 15',
+      'Valor propiedad 16',
+      'Valor propiedad 17',
+      'Valor propiedad 18',
+      'Valor propiedad 19',
+      'Valor propiedad 20',
+      'Valor propiedad 21',
+      'Valor propiedad 22',
+      'Valor propiedad 23',
+      'Valor propiedad 24',
+      'Valor propiedad 25',
+      'Código categoría',
+      'Tipo de Existencia',
+      'Código Artículo SUNAT',
+    ],
+  },
+
+  clientes: {
+    name: 'Clientes',
+    downloadType: 'txt+xls',
+    dedupKey: 'cod_legal',
+    fields: [
+      { key:'cod_cliente',    label:'Código cliente (RUT)',    req:true,  def:'',                  detect:['id_cliente','rut_cliente','rut','cod_cliente','codigo_cliente','codigo_legal','rut_tributario','tax_id','nit'], type:'rut' },
+      { key:'cod_legal',      label:'Código legal (RUT)',      req:true,  def:'',                  detect:['rut_cliente','rut','rut_tributario','cod_legal','codigo_legal','tax_id','nit'], type:'rut' },
+      { key:'nombre',         label:'Nombre / Razón social',  req:true,  def:'Default',           detect:['razon_social','nombre_cliente','nombre','name','company','empresa','denominacion','titular'], maxLen:100, cleanSemicolon:true },
+      { key:'activo',         label:'Cliente activo (S/N)',    req:false, def:'S',                 detect:['status','cliente_activo','activo','estado_cliente'], type:'activo' },
+      { key:'giro',           label:'Giro',                   req:false, def:'Default',           detect:['giro','actividad','rubro','business'], maxLen:100, cleanSemicolon:true },
+      { key:'direccion',      label:'Dirección',              req:false, def:'Default',           detect:['direccion','address','calle','domicilio','dir'] },
+      { key:'distrito',       label:'Comuna (Distrito)',       req:false, def:'Default',           detect:['comuna','distrito','district'] },
+      { key:'ciudad',         label:'Ciudad',                 req:false, def:'Default',           detect:['ciudad','city','commune'] },
+      { key:'estado',         label:'Región (Estado)',        req:false, def:'Default',           detect:['region','estado','state'] },
+      { key:'telefono',       label:'Teléfono',               req:false, def:'',                  detect:['telefono','phone','tel','fono'] },
+      { key:'email',          label:'Email',                  req:false, def:'correo@correo.com', detect:['email','correo','mail','e_mail','e-mail'] },
+      { key:'condicion_pago', label:'Condición de pago',      req:false, def:'',                  detect:['condicion_pago','cond_pago','condicion_venta','condicion_de_venta','plazo'], type:'cond_pago' },
+      { key:'observaciones',  label:'Observaciones',          req:false, def:'',                  detect:['observacion','observaciones','nota','comment'] },
+      // Columnas del formato ERP: las marcadas advanced solo se muestran con "+ opciones → Parear todas las columnas"
+      { key:'nombre_fantasia', label:'Nombre fantasía', req:false, advanced:true, def:'', maxLen:30, cleanSemicolon:true, detect:['nombre_fantasia','fantasia'] },
+      { key:'sigla', label:'Sigla', req:false, advanced:true, def:'', detect:['sigla'] },
+      { key:'rubro', label:'Rubro', req:false, advanced:true, def:'1', maxLen:20, detect:['rubro'] },
+      { key:'pais', label:'País', req:false, advanced:true, def:'Chile', detect:['pais','country'] },
+      { key:'fax', label:'Fax', req:false, advanced:true, def:'', detect:['fax'] },
+      { key:'zip', label:'ZIP / Código postal', req:false, advanced:true, def:'', detect:['codigo_postal','zip','postal'] },
+      { key:'casilla', label:'Casilla', req:false, advanced:true, def:'', detect:['casilla'] },
+      { key:'sitio_web', label:'Sitio web', req:false, advanced:true, def:'', detect:['sitio_web','website','web'] },
+      { key:'vendedor', label:'Vendedor', req:false, advanced:true, def:'', detect:['vendedor','seller'] },
+      { key:'lista_precio', label:'Lista de precios', req:false, advanced:true, def:'', detect:['lista_de_precio','lista_precio','lista_precios'] },
+      { key:'doc_ventas', label:'Documento de ventas', req:false, advanced:true, def:'', detect:['documento_de_ventas','doc_ventas'] },
+      { key:'local', label:'Local', req:false, advanced:true, def:'', detect:['local'], exact:true },
+      { key:'moneda', label:'Moneda', req:false, advanced:true, def:'', detect:['moneda','currency'] },
+      { key:'tipo_producto', label:'Tipo producto (A/S)', req:false, advanced:true, def:'', detect:['tipo_producto'] },
+      { key:'id_producto', label:'ID del producto', req:false, advanced:true, def:'', detect:['id_del_producto'] },
+      { key:'dscto_max', label:'Dscto. máximo global y por producto', req:false, advanced:true, def:'', detect:['dscto_maximo_global','descuento_maximo'] },
+      { key:'usa_recargo', label:'Usa recargo/descuento por línea (S/N)', req:false, advanced:true, def:'', detect:['usa_recargo_descuento'] },
+      { key:'recargo', label:'Recargo/descuento por línea', req:false, advanced:true, def:'', detect:['recargo_descuento_por_linea'] },
+      { key:'tipo_recargo', label:'Tipo recargo/descuento (P/M)', req:false, advanced:true, def:'', detect:['tipo_recargo_descuento'] },
+      { key:'usa_promocion', label:'Usa promoción (S/N)', req:false, advanced:true, def:'', detect:['usa_promocion'] },
+      { key:'usa_credito', label:'Usa crédito (S/N)', req:false, def:'', detect:['usa_credito','posee_credito','cliente_posee_credito'], type:'sn' },
+      { key:'dicom', label:'Dicom comercial (S/N)', req:false, advanced:true, def:'', detect:['dicom_comercial','dicom'] },
+      { key:'condicion_venta', label:'Condición de venta (0-3)', req:false, advanced:true, def:'', detect:['condicion_de_venta_codigo'], exact:true },
+      { key:'monto_credito', label:'Monto aprobado crédito', req:false, def:'', detect:['monto_aprobado_credito','cupo_maximo_de_credito','cupo_maximo','cupo','monto_credito'], type:'price' },
+      { key:'monto_morosidad', label:'Monto máximo de morosidad', req:false, advanced:true, def:'', detect:['monto_maximo_de_morosidad'] },
+      { key:'tiempo_morosidad', label:'Tiempo máximo de morosidad', req:false, def:'1', detect:['tiempo_maximo_de_morosidad','tiempo_morosidad'], type:'num' },
+      { key:'documento', label:'Documento', req:false, advanced:true, def:'', detect:['documento'], exact:true },
+      { key:'identificacion', label:'Identificación', req:false, advanced:true, def:'', detect:['identificacion'], exact:true },
+      { key:'monto', label:'Monto', req:false, advanced:true, def:'', detect:['monto'], exact:true },
+      { key:'comentario_doc', label:'Comentario documento', req:false, advanced:true, def:'', detect:['comentario_documento'] },
+      { key:'usa_ecommerce', label:'Usa Ecommerce (S/N)', req:false, advanced:true, def:'', detect:['usa_ecommerce'] },
+      { key:'usuario_ecommerce', label:'Usuario Ecommerce', req:false, advanced:true, def:'', detect:['usuario_ecommerce'] },
+      { key:'password_ecommerce', label:'Password Ecommerce', req:false, advanced:true, def:'', detect:['password_ecommerce'] },
+      { key:'usa_ot', label:'Usa orden de trabajo (S/N)', req:false, advanced:true, def:'', detect:['usa_orden_de_trabajo'] },
+      { key:'password_ot', label:'Password OT', req:false, advanced:true, def:'', detect:['password_ot'] },
+      { key:'ct_nombre', label:'Nombre del contacto', req:false, advanced:true, def:'', detect:['nombre_del_contacto','nombre_contacto','nopmbre_contacto'], exact:true },
+      { key:'ct_direccion', label:'Dirección del contacto', req:false, advanced:true, def:'', detect:['direccion_del_contacto'], exact:true },
+      { key:'ct_distrito', label:'Distrito del contacto', req:false, advanced:true, def:'', detect:['distrito_del_contacto','comuna_del_contacto'], exact:true },
+      { key:'ct_ciudad', label:'Ciudad del contacto', req:false, advanced:true, def:'', detect:['ciudad_del_contacto'], exact:true },
+      { key:'ct_estado', label:'Estado del contacto', req:false, advanced:true, def:'', detect:['estado_del_contacto','region_del_contacto'], exact:true },
+      { key:'ct_pais', label:'País del contacto', req:false, advanced:true, def:'', detect:['pais_del_contacto'], exact:true },
+      { key:'ct_telefono', label:'Teléfono del contacto', req:false, advanced:true, def:'', detect:['telefono_del_contacto'], exact:true },
+      { key:'ct_fax', label:'Fax del contacto', req:false, advanced:true, def:'', detect:['fax_del_contacto'], exact:true },
+      { key:'ct_email', label:'E-mail del contacto', req:false, advanced:true, def:'', detect:['e_mail_del_contacto'], exact:true },
+      { key:'ct_zip', label:'ZIP del contacto', req:false, advanced:true, def:'', detect:['zip_del_contacto'], exact:true },
+      { key:'ct_casilla', label:'Casilla del contacto', req:false, advanced:true, def:'', detect:['casilla_del_contacto'], exact:true },
+      { key:'ct_cargo', label:'Cargo del contacto', req:false, advanced:true, def:'', detect:['cargo_del_contacto'], exact:true },
+      { key:'ct_area', label:'Area del contacto', req:false, advanced:true, def:'', detect:['area_del_contacto'], exact:true },
+      { key:'atrib1', label:'Atribución 1', req:false, advanced:true, def:'', detect:['atribucion_1'], exact:true },
+      { key:'atrib2', label:'Atribución 2', req:false, advanced:true, def:'', detect:['atribucion_2'], exact:true },
+      { key:'atrib3', label:'Atribución 3', req:false, advanced:true, def:'', detect:['atribucion_3'], exact:true },
+      { key:'atrib4', label:'Atribución 4', req:false, advanced:true, def:'', detect:['atribucion_4'], exact:true },
+      { key:'atrib5', label:'Atribución 5', req:false, advanced:true, def:'', detect:['atribucion_5'], exact:true },
+      { key:'atrib6', label:'Atribución 6', req:false, advanced:true, def:'', detect:['atribucion_6'], exact:true },
+      { key:'atrib7', label:'Atribución 7', req:false, advanced:true, def:'', detect:['atribucion_7'], exact:true },
+      { key:'atrib8', label:'Atribución 8', req:false, advanced:true, def:'', detect:['atribucion_8'], exact:true },
+      { key:'atrib9', label:'Atribución 9', req:false, advanced:true, def:'', detect:['atribucion_9'], exact:true },
+      { key:'atrib10', label:'Atribución 10', req:false, advanced:true, def:'', detect:['atribucion_10'], exact:true },
+      { key:'custom1', label:'Campo personalizable 1', req:false, advanced:true, def:'', detect:['campo_personalizable_1'], exact:true },
+      { key:'custom2', label:'Campo personalizable 2', req:false, advanced:true, def:'', detect:['campo_personalizable_2'], exact:true },
+      { key:'custom3', label:'Campo personalizable 3', req:false, advanced:true, def:'', detect:['campo_personalizable_3'], exact:true },
+      { key:'custom4', label:'Campo personalizable 4', req:false, advanced:true, def:'', detect:['campo_personalizable_4'], exact:true },
+      { key:'custom5', label:'Campo personalizable 5', req:false, advanced:true, def:'', detect:['campo_personalizable_5'], exact:true },
+    ],
+    outputFields: [
+      { key:'cod_cliente' },
+      { key:'cod_legal' },
+      { key:'activo' },
+      { key:'nombre' },
+      { key:'nombre_fantasia' },
+      { key:'giro' },
+      { key:'sigla' },
+      { key:'rubro' },
+      { key:'direccion' },
+      { key:'distrito' },
+      { key:'ciudad' },
+      { key:'estado' },
+      { key:'pais' },
+      { key:'telefono' },
+      { key:'fax' },
+      { key:'zip' },
+      { key:'casilla' },
+      { key:'email' },
+      { key:'sitio_web' },
+      { key:'vendedor' },
+      { key:'lista_precio' },
+      { key:'doc_ventas' },
+      { key:'local' },
+      { key:'moneda' },
+      { key:'condicion_pago' },
+      { key:'tipo_producto' },
+      { key:'id_producto' },
+      { key:'dscto_max' },
+      { key:'observaciones' },
+      { key:'usa_recargo' },
+      { key:'recargo' },
+      { key:'tipo_recargo' },
+      { key:'usa_promocion' },
+      { key:'usa_credito' },
+      { key:'dicom' },
+      { key:'condicion_venta' },
+      { key:'monto_credito' },
+      { key:'monto_morosidad' },
+      { key:'tiempo_morosidad' },
+      { key:'documento' },
+      { key:'identificacion' },
+      { key:'monto' },
+      { key:'comentario_doc' },
+      { key:'usa_ecommerce' },
+      { key:'usuario_ecommerce' },
+      { key:'password_ecommerce' },
+      { key:'usa_ot' },
+      { key:'password_ot' },
+      { key:'ct_nombre' },
+      { key:'ct_direccion' },
+      { key:'ct_distrito' },
+      { key:'ct_ciudad' },
+      { key:'ct_estado' },
+      { key:'ct_pais' },
+      { key:'ct_telefono' },
+      { key:'ct_fax' },
+      { key:'ct_email' },
+      { key:'ct_zip' },
+      { key:'ct_casilla' },
+      { key:'ct_cargo' },
+      { key:'ct_area' },
+      { key:'atrib1' },
+      { key:'atrib2' },
+      { key:'atrib3' },
+      { key:'atrib4' },
+      { key:'atrib5' },
+      { key:'atrib6' },
+      { key:'atrib7' },
+      { key:'atrib8' },
+      { key:'atrib9' },
+      { key:'atrib10' },
+      { key:'custom1' },
+      { key:'custom2' },
+      { key:'custom3' },
+      { key:'custom4' },
+      { key:'custom5' },
+    ],
+    outputHeaders: [
+      'Código del Cliente',
+      'Código Legal',
+      'Cliente Activo',
+      'Nombre',
+      'Nombre Fantasia',
+      'Giro',
+      'Sigla',
+      'Rubro',
+      'Dirección',
+      'Distrito',
+      'Ciudad',
+      'Estado',
+      'País',
+      'Teléfono',
+      'Fax',
+      'ZIP',
+      'Casilla',
+      'E-mail',
+      'Sitio Web',
+      'Vendedor',
+      'Lista de Precios',
+      'Documento de Ventas',
+      'Local',
+      'Moneda',
+      'Condición de pago',
+      'Tipo Producto',
+      'ID del Producto',
+      'Dscto. Máximo Global y por Producto',
+      'Observaciones',
+      'Usa Recargo/Descuento por línea de detalle',
+      'Recargo/Descuento por línea de detalle',
+      'Tipo Recargo/Descuento',
+      'Usa Promoción',
+      'Usa Crédito',
+      'Dicom Comercial',
+      'Condición de Venta',
+      'Monto Aprobado Crédito',
+      'Monto máximo de morosidad',
+      'Tiempo máximo de morosidad',
+      'Documento',
+      'Identificación',
+      'Monto',
+      'Comentario Documento',
+      'Usa Ecommerce',
+      'Usuario Ecommerce',
+      'Password Ecommerce',
+      'Usa Orden de Trabajo',
+      'Password OT',
+      'Nombre del Contacto',
+      'Dirección del Contacto',
+      'Distrito del Contacto',
+      'Ciudad del Contacto',
+      'Estado del Contacto',
+      'País del Contacto',
+      'Teléfono del Contacto',
+      'Fax del Contacto',
+      'E-mail del Contacto',
+      'ZIP del Contacto',
+      'Casilla del Contacto',
+      'Cargo del Contacto',
+      'Area del Contacto',
+      'Atribución 1',
+      'Atribución 2',
+      'Atribución 3',
+      'Atribución 4',
+      'Atribución 5',
+      'Atribución 6',
+      'Atribución 7',
+      'Atribución 8',
+      'Atribución 9',
+      'Atribución 10',
+      'Campo personalizable 1',
+      'Campo personalizable 2',
+      'Campo personalizable 3',
+      'Campo personalizable 4',
+      'Campo personalizable 5',
+    ],
+  },
+
+  proveedores: {
+    name: 'Proveedores',
+    downloadType: 'txt+xls',
+    dedupKey: 'cod_legal',
+    fields: [
+      { key:'cod_proveedor',  label:'Código proveedor (RUT)', req:true,  def:'',       detect:['rut','cod_proveedor','codigo_proveedor','rut_proveedor','codigo'], type:'rut' },
+      { key:'cod_legal',      label:'Código legal (RUT)',     req:true,  def:'',       detect:['rut','cod_legal','codigo_legal','rut_tributario'], type:'rut' },
+      { key:'nombre',         label:'Nombre / Razón social', req:true,  def:'Default',detect:['nombre','razon','razon_social','razonsocial','name','proveedor','company'] },
+      { key:'giro',           label:'Giro',                  req:false, def:'Default',detect:['giro','actividad','rubro','business'], maxLen:100 },
+      { key:'direccion',      label:'Dirección',             req:false, def:'Default',detect:['direccion','address','calle','domicilio'] },
+      { key:'distrito',       label:'Comuna (Distrito)',      req:false, def:'Default',detect:['comuna','distrito','district'] },
+      { key:'ciudad',         label:'Ciudad',                req:false, def:'Default',detect:['ciudad','city'] },
+      { key:'estado',         label:'Región (Estado)',       req:false, def:'Default',detect:['region','estado','state'] },
+      { key:'telefono',       label:'Teléfono',              req:false, def:'',       detect:['telefono','phone','tel'] },
+      { key:'email',          label:'Email',                 req:false, def:'',       detect:['email','correo','mail'] },
+      { key:'condicion_pago', label:'Condición de pago',     req:false, def:'',       detect:['condicion_pago','cond_pago','condicion_venta','condicion_de_venta','plazo'], type:'cond_pago' },
+    ],
+    outputFields: [
+      { key:'cod_proveedor' }, { key:'cod_legal' }, { key:'_activo', fixed:'S' }, { key:'nombre' },
+      { key:'giro' }, { key:'_sigla', fixed:'' }, { key:'_rubro', fixed:'1' }, { key:'direccion' },
+      { key:'distrito' }, { key:'ciudad' }, { key:'estado' }, { key:'_pais', fixed:'Chile' },
+      { key:'telefono' }, { key:'_fax', fixed:'' }, { key:'_zip', fixed:'' }, { key:'_casilla', fixed:'' },
+      { key:'email' }, { key:'_sitio_web', fixed:'' }, { key:'_credito', fixed:'' }, { key:'condicion_pago' },
+    ],
+    outputHeaders: [
+      'Código del Proveedor','Código Legal','Proveedor Activo','Nombre','Giro','Sigla','Rubro',
+      'Dirección','Distrito','Ciudad','Estado','País','Teléfono','Fax','ZIP','Casilla',
+      'E-mail','Sitio Web','Usa Crédito','Condición de pago',
+    ],
+  },
+
+  inventario: {
+    name: 'Mov. Inventario',
+    downloadType: 'xls',
+    dedupKey: null,
+    fields: [
+      { key:'articulo',   label:'Artículo (Código)',  req:true,  def:'',  detect:['articulo','codigo','sku','cod_articulo','item','producto','code'], cleanCode:true },
+      { key:'cantidad',   label:'Cantidad',           req:true,  def:'',  detect:['cantidad','qty','quantity','cant','stock'], type:'num_dec' },
+      { key:'precio',     label:'Precio / Costo',     req:true,  def:'',  detect:['costo','cost','precio','price','valor'], type:'price' },
+      { key:'glosa',      label:'Glosa',              req:false, def:'',  detect:['glosa','descripcion','description','detalle'], cleanSlash:true },
+      { key:'comentario', label:'Comentario',         req:false, def:'',  detect:['comentario','observacion','comment','nota'] },
+      { key:'bod_origen', label:'Bodega origen',      req:false, def:'',  detect:['bodega_origen','bod_origen','origen'] },
+    ],
+    outputHeaders: ['Tipo comprobante','Fecha','Centro Negocio','Bodega Origen','Bodega Destino','Artículo','Cantidad','Precio','Glosa','Comentario'],
+  },
+
+  simple: {
+    name: 'Art. y Servicios (Simple)',
+    downloadType: 'xlsx',
+    dedupKey: 'codigo',
+    fields: [
+      { key:'codigo',               label:'Código',                    req:true,  def:'',    detect:['codigo','sku','code','cod','id','identificador','ref'], cleanCode:true },
+      { key:'codigo_barra',         label:'Código de barra',           req:false, def:'',    detect:['codigo_barra','barcode','ean','ean13','upc','cod_barra'] },
+      { key:'descripcion',          label:'Descripción',               req:true,  def:'',    detect:['descripcion','nombre','name','description','desc','producto','articulo'], cleanSlash:true },
+      { key:'descripcion_detallada',label:'Descripción detallada',     req:false, def:'',    detect:['descripcion_detallada','desc_detallada','descripcion_larga','detalle'] },
+      { key:'disponible_venta',     label:'Disponible para la venta',  req:false, def:'SI',  detect:['disponible_venta','disponible','disp_venta','disponiblevta','venta'], type:'sino' },
+      { key:'tipo',                 label:'Tipo (A=Artículo / S=Servicio)', req:true, def:'A', detect:['tipo','type','clase','kind','categoria','servicio'], type:'tipo_as' },
+      { key:'unidad',               label:'Unidad de medida',          req:false, def:'UN',  detect:['unidad','um','medida','unit','uom'], type:'um' },
+      { key:'precio',               label:'Precio de venta',           req:false, def:'',    detect:['precio','precio_venta','price','pvp','valor','venta'], type:'price' },
+      { key:'costo',                label:'Costo',                     req:false, def:'',    detect:['costo','cost','precio_costo','costo_repos','precio_compra','compra'], type:'price' },
+      { key:'saldo_inicial',        label:'Saldo inicial (stock)',     req:false, def:'',    detect:['saldo_inicial','stock','saldo','cantidad_inicial','qty'], type:'num_dec' },
+    ],
+    outputHeaders: ['codigo','codigo_barra','descripcion','descripcion_detallada','disponible_venta','tipo','unidad','precio','costo','saldo_inicial'],
+  },
+};
+
+// ─── STATE ──────────────────────────────────────────────────
+let currentImporter = 'articulos';
+let rawData = [];
+let rawHeaders = [];
+let convertedValid = [];
+let convertedErrors = [];
+let convertedWarns = [];
+let userDefaults = {};
+let extraMappings = {};
+let fileName = '';
+
+// ─── IMPORTER SWITCH ────────────────────────────────────────
+function switchImporter(key) {
+  currentImporter = key;
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`[data-importer="${key}"]`)?.classList.add('active');
+  document.getElementById('breadcrumb-importer').textContent = `→ ${IMPORTERS[key].name}`;
+
+  // Update accept & fmt tags
+  const fmtTags = document.getElementById('fmt-tags');
+  const isInv = key === 'inventario';
+  document.getElementById('file-input').accept = isInv ? '.xlsx' : '.xlsx,.xls,.csv,.txt';
+  fmtTags.innerHTML = isInv
+    ? '<span class="fmt-tag">XLSX</span>'
+    : '<span class="fmt-tag">XLSX</span><span class="fmt-tag">XLS</span><span class="fmt-tag">CSV</span><span class="fmt-tag">TXT</span>';
+
+  document.getElementById('cat-box').classList.toggle('hidden', key !== 'articulos');
+  resetAll();
+}
+
+// ─── CATEGORÍAS DE DEFONTANA (export: codigo, nombre, codigoPadre, nivel) ───
+let catList = [];   // [{ code, name, parent, nameN }]
+function catActive() { return currentImporter === 'articulos' && catList.length > 0; }
+
+function handleCatFile(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const ext = file.name.split('.').pop().toLowerCase();
+      let wb;
+      if (ext === 'csv' || ext === 'txt') {
+        const txt = String(ev.target.result).replace(/^﻿/, '');
+        const first = txt.split(/\r?\n/).find(l => l.trim()) || '';
+        const FS = [['\t', '\t'], [';', ';'], [',', ',']].map(([c]) => [c, first.split(c).length]).sort((a, b) => b[1] - a[1])[0][0];
+        wb = XLSX.read(txt, { type:'string', FS });
+      } else wb = XLSX.read(ev.target.result, { type:'array' });
+      // Primera hoja con datos; encabezado = primera fila (de las 10 primeras) que tenga "código" y "nombre"
+      let allRows = [];
+      for (const n of wb.SheetNames) {
+        const r = XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'' });
+        if (r.length >= 2) { allRows = r; break; }
+      }
+      const isHead = r => { const h = r.map(normalize); return h.some(x => x.startsWith('cod') || x === 'id') && h.some(x => x.startsWith('nom') || x.startsWith('desc')); };
+      let hIdx = allRows.slice(0, 10).findIndex(isHead);
+      if (hIdx < 0) hIdx = 0;
+      const rows = allRows.slice(hIdx);
+      const hn = (rows[0] || []).map(normalize);
+      const col = (names, fb) => { const i = hn.findIndex(h => names.includes(h)); return i >= 0 ? i : fb; };
+      const ic = col(['codigo','cod','id','codigocategoria'], 0);
+      const inm = col(['nombre','descripcion','categoria','name'], 1);
+      const ip = col(['codigopadre','padre','codigopadrecategoria'], -1);
+      const list = rows.slice(1)
+        .map(r => ({ code: String(r[ic] ?? '').trim(), name: String(r[inm] ?? '').trim(), parent: ip >= 0 ? String(r[ip] ?? '').trim() : '' }))
+        .filter(c => c.code && c.name);
+      if (!list.length) { showToast(`No se encontraron categorías. Encabezados leídos: ${(rows[0] || []).slice(0, 6).join(' | ') || '(vacío)'}`, 'warn'); return; }
+      list.forEach(c => c.nameN = normalize(c.name));
+      catList = list;
+      document.getElementById('cat-status').textContent = `✓ ${list.length} categorías cargadas (${file.name})`;
+      showToast(`${list.length} categorías cargadas.`, 'ok');
+      if (rawData.length) { autoDetect(); renderMappingFields(); }
+    } catch (err) { showToast('Error al leer el archivo de categorías.', 'warn'); }
+  };
+  const ext = file.name.split('.').pop().toLowerCase();
+  ext === 'csv' || ext === 'txt' ? reader.readAsText(file, 'UTF-8') : reader.readAsArrayBuffer(file);
+}
+
+// Devuelve { code } si resuelve, { ambiguous:true } o null
+function resolveCategory(val) {
+  const v = String(val || '').trim();
+  if (!v) return null;
+  const byCode = catList.find(c => c.code === v);
+  if (byCode) return { code: byCode.code };
+  // "Padre > Hijo" (o con / |): usa el último tramo y el penúltimo como padre
+  const parts = v.split(/\s*[>\/|]\s*/).filter(Boolean);
+  const leafN = normalize(parts[parts.length - 1] || v);
+  let cands = catList.filter(c => c.nameN === leafN);
+  if (cands.length > 1 && parts.length > 1) {
+    const parN = normalize(parts[parts.length - 2]);
+    const f = cands.filter(c => { const p = catList.find(x => x.code === c.parent); return p && p.nameN === parN; });
+    if (f.length) cands = f;
+  }
+  if (cands.length > 1) {
+    // Prefiere la subcategoría (la que no es padre de otra)
+    const leaves = cands.filter(c => !catList.some(x => x.parent === c.code));
+    if (leaves.length === 1) cands = leaves;
+  }
+  if (cands.length === 1) return { code: cands[0].code };
+  return cands.length ? { ambiguous: true } : null;
+}
+
+function resetAll() {
+  rawData = []; rawHeaders = []; convertedValid = []; convertedErrors = []; convertedWarns = [];
+  userDefaults = {}; extraMappings = {}; fileName = '';
+  document.getElementById('upload-btn-wrap').classList.remove('hidden');
+  document.getElementById('file-bar').classList.add('hidden');
+  document.getElementById('mapping-section').classList.add('hidden');
+  document.getElementById('result-section').classList.add('hidden');
+  document.getElementById('file-input').value = '';
+  document.getElementById('inv-panel').classList.add('hidden');
+}
+
+function resetUpload() { resetAll(); }
+
+function resetToMapping() {
+  document.getElementById('result-section').classList.add('hidden');
+  document.getElementById('mapping-section').classList.remove('hidden');
+}
+
+// ─── FILE HANDLING ───────────────────────────────────────────
+function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 25 * 1024 * 1024) { showToast('El archivo supera el máximo de 25 MB.', 'warn'); return; }
+  const ext = file.name.split('.').pop().toLowerCase();
+  const allowed = currentImporter === 'inventario' ? ['xlsx'] : ['xlsx','xls','csv','txt'];
+  if (!allowed.includes(ext)) { showToast(`Formato no permitido. Acepta: ${allowed.join(', ').toUpperCase()}`, 'warn'); return; }
+  fileName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => { ext === 'csv' || ext === 'txt' ? parseCSV(e.target.result) : parseExcel(e.target.result); };
+  ext === 'csv' || ext === 'txt' ? reader.readAsText(file, 'UTF-8') : reader.readAsArrayBuffer(file);
+}
+
+// Define encabezados y datos. Si los encabezados reales no están en la fila 1
+// (p. ej. fila 1 con códigos internos y fila 2 con los nombres), usa la fila de las
+// primeras 10 que más se parezca a los campos del importador actual.
+function setTable(rows) {
+  const imp = IMPORTERS[currentImporter];
+  const dets = imp.fields.flatMap(f => f.detect.map(normalize));
+  const score = r => r.filter(c => {
+    const hn = normalize(c);
+    return hn && dets.some(d => hn === d || hn.includes(d));
+  }).length;
+  let hi = 0, best = score(rows[0] || []);
+  rows.slice(0, 10).forEach((r, i) => { const sc = score(r); if (sc > best) { best = sc; hi = i; } });
+  rawHeaders = rows[hi].map(h => String(h).trim());
+  // Plantilla Defontana con fila de grupos ("Información", "Venta", "Contacto"...) sobre los encabezados:
+  // las columnas bajo "Contacto" (Nombre, Dirección, Comuna...) repiten nombres del cliente; se renombran "X del Contacto"
+  if (currentImporter === 'clientes' && hi > 0) {
+    const ctNames = ['nombre','direccion','comuna','ciudad','region','pais','telefono','fax','email','zip','casilla','cargo','area'];
+    let grp = '';
+    rawHeaders = rawHeaders.map((h, i) => {
+      const g = String((rows[hi - 1] || [])[i] || '').trim();
+      if (g) grp = normalize(g);
+      return (grp === 'contacto' && ctNames.includes(normalize(h))) ? `${h} del Contacto` : h;
+    });
+  }
+  // Quita el truco ="valor" que exportan Bsale/Excel para forzar texto (ej. RUT), también en .xlsx
+  const unwrap = c => { const m = typeof c === 'string' ? c.trim().match(/^="(.*)"$/) : null; return m ? m[1] : c; };
+  rawData = rows.slice(hi + 1).map(r => r.map(unwrap)).filter(r => r.some(c => String(c).trim() !== ''));
+  const hn = rawHeaders.map(normalize);
+  if (currentImporter === 'clientes' && ['rutcliente','razonsocial','cupomaximodecredito'].every(k => hn.includes(k))) {
+    showToast('Formato Bsale reconocido: columnas pareadas automáticamente.', 'ok');
+  }
+  if (hi > 0) showToast(`Encabezados detectados en la fila ${hi + 1}.`, 'ok');
+  onFileParsed();
+}
+
+function parseExcel(buffer) {
+  try {
+    const wb = XLSX.read(buffer, { type:'array', cellDates:false });
+    const sheets = wb.SheetNames
+      .map(n => ({ name:n, data: XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'' }) }))
+      .filter(s => s.data.length >= 2);
+    if (!sheets.length) { showToast('El archivo está vacío.', 'warn'); return; }
+    if (sheets.length === 1) { setTable(sheets[0].data); return; }
+    askSheet(sheets);
+  } catch(e) { showToast('Error al leer el archivo.', 'warn'); }
+}
+
+// Archivo con varias hojas con datos: pregunta cuál procesar
+function askSheet(sheets) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:420px;width:100%;max-height:80vh;overflow:auto;font-family:inherit;color:#1f2937';
+  box.innerHTML = '<h3 style="margin:0 0 6px;font-size:18px">¿Qué hoja quieres validar?</h3><p style="margin:0 0 16px;font-size:14px;color:#6b7280">Este archivo tiene ' + sheets.length + ' hojas con datos.</p>';
+  sheets.forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'display:block;width:100%;text-align:left;margin:0 0 8px;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:14px';
+    b.textContent = s.name + '  ·  ' + (s.data.length - 1) + ' filas';
+    b.onmouseenter = () => b.style.background = '#fff4ec';
+    b.onmouseleave = () => b.style.background = '#fff';
+    b.onclick = () => { ov.remove(); setTable(s.data); };
+    box.appendChild(b);
+  });
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+}
+
+// Quita comillas CSV y el truco de Excel ="valor" (usado para forzar texto, ej. RUT)
+function cleanCSVCell(c) {
+  c = c.trim().replace(/^"|"$/g,'').replace(/""/g,'"');
+  const m = c.match(/^="(.*)"$/);
+  return m ? m[1] : c;
+}
+
+function parseCSV(text) {
+  const delimiters = [',',';','\t','|'];
+  let best = ','; let max = 0;
+  delimiters.forEach(d => {
+    const c = (text.split('\n')[0].match(new RegExp('\\' + d, 'g')) || []).length;
+    if (c > max) { max = c; best = d; }
+  });
+  const lines = text.trim().split(/\r?\n/);
+  setTable(lines.filter(Boolean).map(l => l.split(best).map(cleanCSVCell)));
+}
+
+function onFileParsed() {
+  document.getElementById('upload-btn-wrap').classList.add('hidden');
+  document.getElementById('file-bar').classList.remove('hidden');
+  document.getElementById('file-bar-name').textContent = fileName;
+  document.getElementById('file-bar-rows').textContent = rawData.length.toLocaleString();
+  document.getElementById('file-bar-cols').textContent = rawHeaders.length;
+
+  if (currentImporter === 'inventario') {
+    const panel = document.getElementById('inv-panel');
+    panel.classList.remove('hidden');
+    document.getElementById('inv-fecha').value = new Date().toISOString().slice(0,10);
+  }
+
+  showAdvanced = false;
+  autoDetect();
+  renderMappingFields();
+  document.getElementById('mapping-section').classList.remove('hidden');
+  document.getElementById('result-section').classList.add('hidden');
+}
+
+// ─── AUTODETECT ──────────────────────────────────────────────
+function normalize(str) {
+  return String(str).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+}
+
+let autoMapping = {};
+let showAdvanced = false;
+
+// ¿La columna trae números? Revisa hasta 200 valores no vacíos; una columna vacía se considera válida.
+function colLooksNumeric(h) {
+  const i = rawHeaders.indexOf(h);
+  if (i < 0) return true;
+  let total = 0, nums = 0;
+  for (const r of rawData) {
+    const v = String(r[i] ?? '').trim();
+    if (!v) continue;
+    total++;
+    if (/^-?\d+$/.test(v.replace(/[$\s.,%]/g, ''))) nums++;
+    if (total >= 200) break;
+  }
+  return total === 0 || nums / total >= 0.6;
+}
+
+function autoDetect() {
+  const imp = IMPORTERS[currentImporter];
+  autoMapping = {};
+  const used = new Set();
+  const heads = rawHeaders.map(h => ({ h, hn: normalize(h) }));
+  imp.fields.forEach(field => {
+    if (field.advanced && !showAdvanced && !(field.key === 'cod_cat' && catActive())) { autoMapping[field.key] = '__none__'; return; }
+    const dets = field.detect.map(normalize);
+    // Los campos de código/nombre no deben tomar columnas de código/identificador genérico
+    const skip = (field.key === 'descripcion' || field.key === 'nombre')
+      ? (hn => ['codigo','sku','identificador','cod','code','ref','id','rut'].some(b => hn === b || hn.startsWith(b)))
+      : (() => false);
+    // Código cliente/proveedor y código legal son el mismo RUT: pueden compartir columna
+    const canShare = field.key === 'cod_legal' || field.key === 'cod_cliente' || field.key === 'cod_proveedor';
+    // Campos numéricos (precio, costo, cantidad, stock): descartar columnas cuyo contenido es texto
+    // (ej. "Lista de Precio" = "PRINCIPAL", "¿Posible vender en cantidad decimal?" = "Sí/No")
+    const isNumField = ['price','num','num_dec'].includes(field.type);
+    // Precio de venta no debe tomar columnas de compra/costo
+    const skipVenta = (field.key === 'precio_venta' || (field.key === 'precio' && currentImporter === 'simple'))
+      ? (hn => hn.includes('compra') || hn.includes('costo')) : (() => false);
+    let cands = heads.filter(x => (canShare || !used.has(x.h)) && !skip(x.hn) && !skipVenta(x.hn) && (!isNumField || colLooksNumeric(x.h)));
+    // En precios, dejar al final columnas de totales, ofertas o rebajas (preferir "Precio normal" / "Unitario")
+    if (field.type === 'price') {
+      const low = ['total','rebaj','oferta','descuento','promo','lista'];
+      const pen = x => low.some(w => x.hn.includes(w)) ? 1 : 0;
+      cands = cands.map((x, i) => ({ x, i })).sort((a, b) => pen(a.x) - pen(b.x) || a.i - b.i).map(o => o.x);
+    }
+    // Prioridad por orden de 'detect': exacto, luego contiene, luego contenido en el encabezado
+    let found = null;
+    for (const d of dets) { found = cands.find(x => x.hn === d); if (found) break; }
+    if (!found && !field.exact) for (const d of dets) { found = cands.find(x => x.hn.includes(d)); if (found) break; }
+    if (!found && !field.exact) found = cands.find(x => x.hn.length >= 3 && dets.some(d => d.includes(x.hn)));
+    const best = found ? found.h : '__none__';
+    autoMapping[field.key] = best;
+    if (best !== '__none__') used.add(best);
+  });
+}
+
+function toggleMoreMenu(e) {
+  e.stopPropagation();
+  document.getElementById('more-menu').classList.toggle('hidden');
+}
+document.addEventListener('click', () => { const m = document.getElementById('more-menu'); if (m) m.classList.add('hidden'); });
+
+// Muestra (o oculta) todas las columnas del formato ERP y autodetecta las nuevas,
+// conservando lo que el usuario ya eligió en los campos principales.
+function toggleAdvancedFields() {
+  const imp = IMPORTERS[currentImporter];
+  const prevMap = {}, prevDef = {};
+  document.querySelectorAll('[data-field]').forEach(sel => { prevMap[sel.dataset.field] = sel.value; });
+  document.querySelectorAll('[data-default]').forEach(inp => { prevDef[inp.dataset.default] = inp.value; });
+  showAdvanced = !showAdvanced;
+  autoDetect();
+  imp.fields.forEach(f => {
+    if (f.advanced && !showAdvanced) return;
+    if (prevMap[f.key] !== undefined) autoMapping[f.key] = prevMap[f.key];
+  });
+  renderMappingFields();
+  document.querySelectorAll('[data-default]').forEach(inp => {
+    if (prevDef[inp.dataset.default] !== undefined) inp.value = prevDef[inp.dataset.default];
+  });
+  if (showAdvanced) showToast('Se muestran todas las columnas del formato.', 'ok');
+}
+
+function renderMappingFields() {
+  const imp = IMPORTERS[currentImporter];
+  const grid = document.getElementById('fields-grid');
+  grid.innerHTML = '';
+  userDefaults = {};
+
+  const hasAdv = imp.fields.some(f => f.advanced);
+  document.getElementById('more-options').classList.toggle('hidden', !hasAdv);
+  document.getElementById('more-menu').classList.add('hidden');
+  document.getElementById('btn-pair-all').textContent = showAdvanced ? 'Ocultar columnas adicionales' : 'Parear todas las columnas';
+
+  imp.fields.forEach(field => {
+    if (field.advanced && !showAdvanced && !(field.key === 'cod_cat' && catActive())) return;
+    const isAuto = autoMapping[field.key] !== '__none__';
+    const card = document.createElement('div');
+    card.className = 'field-card';
+
+    const defVal = field.def === 'today' ? getTodayStr() : (field.def || '');
+
+    card.innerHTML = `
+      <div class="field-card-top">
+        <span class="field-name">${field.label}</span>
+        <span class="field-badge ${field.req ? 'required' : 'optional'}">${field.req ? 'Obligatorio' : 'Opcional'}</span>
+      </div>
+      <select class="field-select" data-field="${field.key}">
+        <option value="__none__">— No mapear —</option>
+        ${rawHeaders.map(h => `<option value="${esc(h)}" ${autoMapping[field.key] === h ? 'selected' : ''}>${esc(h)}</option>`).join('')}
+      </select>
+      <div class="field-default-row">
+        <span class="field-default-label">Default:</span>
+        <input class="field-default-input" data-default="${field.key}" value="${esc(defVal)}" placeholder="valor por defecto">
+      </div>
+      ${isAuto ? `<div class="field-autodetect"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Detectado automáticamente</div>` : ''}
+    `;
+    grid.appendChild(card);
+    userDefaults[field.key] = defVal;
+  });
+
+  // Extra unmapped columns
+  const mappedCols = new Set(Object.values(autoMapping).filter(v => v !== '__none__'));
+  const extra = rawHeaders.filter(h => !mappedCols.has(h));
+  const extraSection = document.getElementById('extra-section');
+  const extraGrid = document.getElementById('extra-grid');
+  extraGrid.innerHTML = '';
+  extraMappings = {};
+
+  if (extra.length > 0) {
+    extraSection.classList.remove('hidden');
+    document.getElementById('extra-toggle-text').textContent = `${extra.length} columna${extra.length > 1 ? 's' : ''} del archivo sin mapear — haz clic para asignar`;
+    extra.forEach(col => {
+      const card = document.createElement('div');
+      card.className = 'extra-card';
+      card.innerHTML = `
+        <div class="extra-col-name">${esc(col)}</div>
+        <select class="field-select" data-extra="${esc(col)}" onchange="extraMap(this,'${esc(col)}')">
+          <option value="__none__">— No mapear —</option>
+          ${imp.fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('')}
+        </select>
+      `;
+      extraGrid.appendChild(card);
+    });
+  } else {
+    extraSection.classList.add('hidden');
+  }
+}
+
+function extraMap(sel, col) {
+  extraMappings[col] = sel.value; // field.key or __none__
+}
+
+function toggleExtra() {
+  const grid = document.getElementById('extra-grid');
+  const btn = document.getElementById('extra-toggle-text');
+  const isHidden = grid.classList.contains('hidden');
+  grid.classList.toggle('hidden');
+  const extra = document.querySelectorAll('[data-extra]').length;
+  btn.textContent = isHidden
+    ? `Ocultar columnas sin mapear`
+    : `${extra} columna${extra > 1 ? 's' : ''} del archivo sin mapear — haz clic para asignar`;
+}
+
+// ─── HELPERS ────────────────────────────────────────────────
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function getTodayStr() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+
+function dateInputToDefontana(isoDate) {
+  if (!isoDate) return getTodayStr();
+  const [y,m,d] = isoDate.split('-');
+  return `${d}-${m}-${y}`;
+}
+
+// Chilean price: 9.894 → 9894
+function cleanPrice(val) {
+  if (val === null || val === undefined || val === '') return '0';
+  val = String(val).trim().replace(/[$\s]/g,'');
+  if (!val) return '0';
+  if (val.includes(',') && !val.includes('.')) {
+    return String(Math.round(parseFloat(val.replace(',','.')) || 0));
+  }
+  const dotCount = (val.match(/\./g)||[]).length;
+  if (dotCount >= 1) {
+    const parts = val.split('.');
+    const last = parts[parts.length - 1];
+    if (last.length === 3 || dotCount > 1) { val = val.replace(/\./g,''); }
+  }
+  return String(Math.round(parseFloat(val.replace(',','.')) || 0));
+}
+
+function cleanNum(val) {
+  if (!val && val !== 0) return '0';
+  const n = parseFloat(String(val).replace(/[^0-9.,-]/g,'').replace(',','.'));
+  return isNaN(n) ? '0' : String(Math.round(n));
+}
+
+function cleanNumDec(val) {
+  if (!val && val !== 0) return '0';
+  // Detectar separador decimal: si hay coma Y punto, la coma es miles
+  let s = String(val).replace(/[^0-9.,-]/g,'');
+  if (s.includes(',') && s.includes('.')) {
+    // e.g. 1.234,56 → 1234.56
+    s = s.replace(/\./g,'').replace(',','.');
+  } else if (s.includes(',')) {
+    s = s.replace(',','.');
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? '0' : String(n);
+}
+
+function normalizeDate(val) {
+  if (!val) return getTodayStr();
+  val = String(val).trim();
+  if (/^\d{4,5}$/.test(val)) {
+    try {
+      const d = XLSX.SSF.parse_date_code(parseInt(val));
+      if (d) return `${String(d.d).padStart(2,'0')}-${String(d.m).padStart(2,'0')}-${d.y}`;
+    } catch(e) {}
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(val)) {
+    const [y,m,d] = val.split('T')[0].split('-');
+    return `${d}-${m}-${y}`;
+  }
+  const m1 = val.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (m1) {
+    const dd = m1[1].padStart(2,'0'), mo = m1[2].padStart(2,'0');
+    const yy = m1[3].length === 2 ? '20'+m1[3] : m1[3];
+    return `${dd}-${mo}-${yy}`;
+  }
+  return getTodayStr();
+}
+
+function formatRUT(val) {
+  if (!val) return '';
+  let rut = String(val).trim().toUpperCase().replace(/\./g,'').replace(/-/g,'');
+  const body = rut.slice(0,-1), dv = rut.slice(-1);
+  if (!/^\d+$/.test(body)) return val;
+  // Cuerpo siempre de 8 dígitos: los RUT más cortos llevan ceros adelante (8.156.872-3 → 08.156.872-3)
+  return body.padStart(8, '0').replace(/(\d{2})(\d{3})(\d{3})$/, '$1.$2.$3') + '-' + dv;
+}
+
+// Mapa de unidades de medida conocidas → código Defontana
+const UM_MAP = {
+  // Unidad
+  'un': 'UN', 'und': 'UN', 'unidad': 'UN', 'unidades': 'UN', 'unit': 'UN', 'units': 'UN',
+  'pieza': 'UN', 'piezas': 'UN', 'pza': 'UN', 'u': 'UN', '1': 'UN',
+  // Granel / litro / volumen
+  'granel': 'GR', 'gr': 'GR', 'grl': 'GR',
+  'litro': 'LT', 'litros': 'LT', 'lt': 'LT', 'l': 'LT', 'lts': 'LT',
+  'mililitro': 'ML', 'mililitros': 'ML', 'ml': 'ML',
+  // Kilo / gramo / peso
+  'kilo': 'KG', 'kilos': 'KG', 'kg': 'KG', 'kilogramo': 'KG', 'kilogramos': 'KG',
+  'gramo': 'GRS', 'gramos': 'GRS', 'grs': 'GRS', 'g': 'GRS',
+  'tonelada': 'TON', 'toneladas': 'TON', 'ton': 'TON',
+  // Metro / longitud
+  'metro': 'MT', 'metros': 'MT', 'mt': 'MT', 'm': 'MT',
+  'cm': 'CM', 'centimetro': 'CM', 'centimetros': 'CM',
+  // Caja / pack
+  'caja': 'CJ', 'cajas': 'CJ', 'cj': 'CJ', 'box': 'CJ',
+  'pack': 'PK', 'pk': 'PK', 'paquete': 'PK', 'paquetes': 'PK',
+  'rollo': 'RLL', 'rollos': 'RLL', 'rll': 'RLL',
+  'par': 'PAR', 'pares': 'PAR',
+  'docena': 'DOC', 'doc': 'DOC',
+  'hora': 'HR', 'horas': 'HR', 'hr': 'HR', 'h': 'HR',
+  'servicio': 'SRV', 'srv': 'SRV',
+};
+
+// Unidades para las que ya pedimos confirmación en esta sesión
+const umPendingPrompts = {};
+
+// "30 días", "Crédito 30 días", "30" → CREDITO30; plazos de 1 dígito van con cero: "7 días" → CREDITO07.
+// Sin plazo en días (ej. CONTADO) queda igual.
+// Condiciones de pago que Defontana trae por defecto; cualquier otro código generado se registra para avisar que hay que crearlo.
+const COND_PAGO_DEFECTO = ['CONTADO', 'CREDITO30', 'CREDITO3060', 'CREDITO306090', 'CREDITO60', 'CREDITO90'];
+const condPagoNoDefecto = {};
+
+function formatCondPago(val) {
+  const m = String(val).match(/(\d+)\s*(?:d[ií]as?|d)?\s*$/i) || String(val).match(/(\d+)\s*d[ií]as?/i);
+  const n = m ? parseInt(m[1], 10) : 0;
+  if (n <= 0) return val;
+  const code = 'CREDITO' + String(n).padStart(2, '0');
+  if (!COND_PAGO_DEFECTO.includes(code)) condPagoNoDefecto[code] = true;
+  return code;
+}
+
+function normalizeUM(val) {
+  if (!val || !val.trim()) return 'UN';
+  const key = val.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  if (UM_MAP[key]) return UM_MAP[key];
+  // Si no reconocemos la unidad, la guardamos para avisar después
+  if (!umPendingPrompts[val.trim()]) umPendingPrompts[val.trim()] = true;
+  return val.trim().toUpperCase().substring(0, 20);
+}
+
+// Deja solo caracteres que Defontana acepta en textos largos (errores "Carácter no permitido ...: 92 / 239"):
+// quita \ y saltos de línea, cambia espacios raros y comillas tipográficas, y reemplaza letras con diéresis/tilde distintas al español.
+function cleanText(v) {
+  return String(v)
+    .replace(/\\[nrt]/g, ' ')                       // "\n" escrito como texto
+    .replace(/[\\\r\n\t\u00a0\u2009\u200b]/g, ' ')    // backslash, saltos, tab, espacios especiales
+    .replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/\u2026/g, '...')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[^\u0000-\u007f\u00a1\u00bf\u00b0\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1\u00c1\u00c9\u00cd\u00d3\u00da\u00dc\u00d1]/g,
+             ch => ch.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+    .replace(/ {2,}/g, ' ').trim();
+}
+
+function transformValue(rawVal, field, defaults) {
+  let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? String(rawVal).trim() : '';
+  if (!val) val = defaults[field.key] !== undefined ? defaults[field.key] : (field.def || '');
+  if (val === 'today') val = getTodayStr();
+  if (field.type === 'price') val = cleanPrice(val);
+  else if (field.type === 'num') val = cleanNum(val);
+  else if (field.type === 'num_dec') val = cleanNumDec(val);
+  else if (field.type === 'rut') val = formatRUT(val);
+  else if (field.type === 'um') val = normalizeUM(val);
+  else if (field.type === 'sn') {
+    const v = val.toUpperCase().trim();
+    val = !v ? '' : (['S','SI','SÍ','YES','Y','1','TRUE'].includes(v) ? 'S' : 'N');
+  }
+  else if (field.type === 'activo') {
+    const v = val.toUpperCase().trim();
+    val = ['ACTIVO','ACTIVA','S','SI','SÍ','YES','Y','1','TRUE','VIGENTE','HABILITADO'].includes(v) ? 'S' : 'N';
+  }
+  else if (field.type === 'cond_pago') val = formatCondPago(val);
+  else if (field.type === 'sino') {
+    // SI/NO — acepta: si, s, yes, y, 1, true → SI; resto → NO
+    const v = val.toUpperCase().trim();
+    val = (['SI','S','YES','Y','1','TRUE','SÍ'].includes(v)) ? 'SI' : 'NO';
+  }
+  else if (field.type === 'tipo_as') {
+    // A = Artículo, S = Servicio
+    const v = val.toUpperCase().trim();
+    if (['S','SERVICIO','SERVICE','SRV'].includes(v)) val = 'S';
+    else val = 'A'; // por defecto Artículo
+  }
+  if (field.cleanText) val = cleanText(val);
+  if (field.cleanSemicolon) val = val.replace(/;/g, ',');
+  if (field.cleanSlash) val = val.replace(/\//g,' ').replace(/  +/g,' ').trim();
+  if (field.cleanCode) val = val.replace(/[\/\\|#@!$%^&*()+=\[\]{}<>?;:'"`,~]/g,' ').replace(/  +/g,' ').trim();
+  return val;
+}
+
+// ─── CONVERSION ─────────────────────────────────────────────
+function convertFile() {
+  // Gather mapping from selects
+  const currentMapping = {};
+  document.querySelectorAll('[data-field]').forEach(sel => { currentMapping[sel.dataset.field] = sel.value; });
+  // Gather defaults from inputs
+  const defaults = {};
+  document.querySelectorAll('[data-default]').forEach(inp => { defaults[inp.dataset.default] = inp.value; });
+  // Apply extra mappings
+  Object.entries(extraMappings).forEach(([col, fieldKey]) => {
+    if (fieldKey !== '__none__' && currentMapping[fieldKey] === '__none__') currentMapping[fieldKey] = col;
+  });
+
+  const imp = IMPORTERS[currentImporter];
+  const missingReq = imp.fields.filter(f => f.req && (!currentMapping[f.key] || currentMapping[f.key] === '__none__') && (!defaults[f.key] || !defaults[f.key].trim()));
+  if (missingReq.length > 0) { showToast(`Campos obligatorios sin mapear ni default: ${missingReq.map(f=>f.label).join(', ')}`, 'warn'); return; }
+
+  const headerIdx = {};
+  rawHeaders.forEach((h,i) => headerIdx[h] = i);
+
+  const today = getTodayStr();
+  const seenKeys = new Set();
+  const valid = [], errors = [], warns = [];
+  // Sin columna de stock máximo: el stock mínimo se ignora (Defontana exige máx ≥ mín) y se avisa una sola vez
+  const stockMaxMapped = !!currentMapping.stock_max && currentMapping.stock_max !== '__none__';
+  let stockMinIgnored = 0;
+
+  // Inventory overrides
+  const isInv = currentImporter === 'inventario';
+  const invTipo = isInv ? document.getElementById('inv-tipo').value || 'AP' : '';
+  const invFecha = isInv ? dateInputToDefontana(document.getElementById('inv-fecha').value) : today;
+  const invBodega = isInv ? document.getElementById('inv-bodega').value || 'BODEGACENTRAL' : '';
+  const invCentro = isInv ? document.getElementById('inv-centro').value : '';
+
+  // Limpiar pending UM antes de procesar
+  Object.keys(umPendingPrompts).forEach(k => delete umPendingPrompts[k]);
+  Object.keys(condPagoNoDefecto).forEach(k => delete condPagoNoDefecto[k]);
+
+  rawData.forEach((row, idx) => {
+    const out = {};
+    const rowErrs = [];
+
+    imp.fields.forEach(field => {
+      const colName = currentMapping[field.key];
+      const rawVal = colName && colName !== '__none__' ? row[headerIdx[colName]] : undefined;
+      // ID cliente en columna propia (distinta del código legal): solo se formatea como RUT si ya trae guion;
+      // los IDs de extranjeros (números o texto sin guion) se respetan tal cual
+      const fld = (currentImporter === 'clientes' && field.key === 'cod_cliente' && colName && colName !== currentMapping.cod_legal
+        && !/-/.test(String(rawVal ?? ''))) ? { ...field, type: undefined } : field;
+      let val = transformValue(rawVal, fld, defaults);
+      if (field.req && !val.trim()) rowErrs.push(`Campo obligatorio vacío: "${field.label}"`);
+      out[field.key] = val;
+    });
+
+    // Validación específica inventario: cantidad y precio no pueden ser 0
+    if (isInv) {
+      if (!out.cantidad || parseFloat(out.cantidad) === 0) rowErrs.push('Cantidad no puede ser 0 o vacía');
+      if (!out.precio || parseFloat(out.precio) === 0) rowErrs.push('Precio/Costo no puede ser 0 o vacío');
+    }
+
+    // Defontana: el identificador del artículo admite máximo 25 caracteres
+    if (currentImporter === 'articulos' && out.id_articulo && out.id_articulo.length > 25) {
+      rowErrs.push(`Identificador del artículo supera los 25 caracteres permitidos (${out.id_articulo.length}): ${out.id_articulo}`);
+    }
+
+    // Categoría: con categorías de Defontana cargadas, el nombre (o "Padre > Hijo") se reemplaza por su código
+    let catWarn = '';
+    if (catActive() && out.cod_cat) {
+      const orig = out.cod_cat;
+      const res = resolveCategory(orig);
+      if (res && res.code) out.cod_cat = res.code;
+      else {
+        out.cod_cat = '';
+        catWarn = res && res.ambiguous
+          ? `Categoría "${orig}" coincide con más de una categoría de Defontana: quedó vacía`
+          : `Categoría "${orig}" no existe en las categorías cargadas: quedó vacía (créala en Defontana)`;
+      }
+    }
+
+    // Unidad de medida venta = unidad de medida inventario (siempre)
+    if (currentImporter === 'articulos' && out.unidad_inv) {
+      out.unidad_venta = out.unidad_inv;
+    }
+
+    // Para clientes/proveedores: si cod_cliente y cod_legal mapean al mismo campo, ambos toman ese valor
+    if (currentImporter === 'clientes' || currentImporter === 'proveedores') {
+      const ck = currentImporter === 'clientes' ? 'cod_cliente' : 'cod_proveedor';
+      const cl = 'cod_legal';
+      // Si cod_legal no tiene valor pero cod_cliente sí, copiar
+      if (!out[cl] && out[ck]) out[cl] = out[ck];
+      // Si cod_cliente no tiene valor pero cod_legal sí, copiar
+      if (!out[ck] && out[cl]) out[ck] = out[cl];
+    }
+    if (currentImporter === 'clientes') {
+      // Rubro: en Defontana el código es "1" (nombre "Proveedores y Clientes SP"); si viene el nombre, se usa el código
+      if (normalize(out.rubro || '') === 'proveedoresyclientessp') out.rubro = '1';
+      // Usa Crédito sin dato en el archivo: se deduce del monto (monto > 0 → S; si no → N)
+      if (!out.usa_credito) out.usa_credito = parseFloat(out.monto_credito) > 0 ? 'S' : 'N';
+      // Datos de contacto vacíos: se rellenan con los datos del cliente
+      const ctMap = { ct_nombre:'nombre', ct_direccion:'direccion', ct_distrito:'distrito', ct_ciudad:'ciudad',
+        ct_estado:'estado', ct_pais:'pais', ct_telefono:'telefono', ct_fax:'fax', ct_email:'email',
+        ct_zip:'zip', ct_casilla:'casilla' };
+      Object.entries(ctMap).forEach(([ck, mk]) => { if (!out[ck] && out[mk]) out[ck] = out[mk]; });
+    }
+    // Clientes sin crédito (Usa Crédito = N): Monto aprobado crédito y Tiempo máximo de morosidad quedan vacíos
+    if (currentImporter === 'clientes' && out.usa_credito === 'N') {
+      out.monto_credito = '';
+      out.tiempo_morosidad = '';
+    }
+    // Usa Crédito = S exige Monto aprobado crédito mayor a 0
+    if (currentImporter === 'clientes' && out.usa_credito === 'S' && !(parseFloat(out.monto_credito) > 0)) {
+      rowErrs.push('Usa Crédito = S: el Monto aprobado crédito debe ser mayor a 0');
+    }
+    // Con Monto aprobado crédito (AK), el Monto máximo de morosidad (AL) toma el mismo monto
+    if (currentImporter === 'clientes' && out.monto_credito && !out.monto_morosidad) {
+      out.monto_morosidad = out.monto_credito;
+    }
+    if (imp.dedupKey) {
+      // Duplicado = mismo código (ID) Y mismo código legal. Extranjeros con RUT genérico (55.555.555-5) pero ID distinto son clientes distintos.
+      const idKey = currentImporter === 'clientes' ? 'cod_cliente' : currentImporter === 'proveedores' ? 'cod_proveedor' : null;
+      const k = out[imp.dedupKey];
+      const full = k ? (idKey ? `${out[idKey] || ''}|${k}` : k) : '';
+      if (full && seenKeys.has(full)) {
+        errors.push({ row: idx+2, data: out, errs: [`Código duplicado: ${idKey && out[idKey] !== k ? out[idKey] + ' / ' : ''}${k} — omitido`], isDup: true });
+        return;
+      }
+      if (full) seenKeys.add(full);
+    }
+
+    // Build output row
+    let outputRow;
+    if (isInv) {
+      outputRow = [
+        invTipo, invFecha, invCentro, out.bod_origen || '',
+        invBodega, out.articulo, out.cantidad, out.precio,
+        out.glosa || '', out.comentario || '',
+      ];
+    } else if (currentImporter === 'simple') {
+      // Importador simple: orden exacto de las 10 columnas
+      outputRow = [
+        out.codigo, out.codigo_barra || '', out.descripcion,
+        out.descripcion_detallada || '', out.disponible_venta || 'SI',
+        out.tipo || 'A', out.unidad || 'UN',
+        out.precio || '', out.costo || '', out.saldo_inicial || '',
+      ];
+    } else {
+      outputRow = imp.outputFields.map(of => {
+        if (of.fixed !== undefined) return of.fixed;
+        if (of.key === '_fecha') return today;
+        return out[of.key] || '';
+      });
+    }
+
+    // Truncate lengths
+    if (!isInv && imp.outputFields) {
+      const maxLens = {}; imp.fields.forEach(f => { if (f.maxLen) maxLens[f.key] = f.maxLen; });
+      imp.outputFields.forEach((of, i) => {
+        if (of.fixed !== undefined) return;
+        const max = maxLens[of.key];
+        if (max && outputRow[i] && String(outputRow[i]).length > max) {
+          outputRow[i] = String(outputRow[i]).substring(0, max);
+        }
+      });
+    }
+
+    // Advertencia: stock_max < stock_min → forzar stock_max a 0
+    const rowWarns = [];
+    if (catWarn) rowWarns.push(catWarn);
+
+    // Validación geográfica clientes/proveedores
+    validateGeo(out, rowWarns);
+
+    // Condición de pago que no existe por defecto en Defontana
+    if (condPagoNoDefecto[out.condicion_pago]) {
+      rowWarns.push(`Condición de pago ${out.condicion_pago} no existe por defecto en Defontana: debe crearla antes de importar`);
+    }
+
+    // Reconstruir outputRow tras validateGeo (puede haber corregido distrito/ciudad/estado)
+    if (!isInv && imp.outputFields) {
+      outputRow = imp.outputFields.map(of => {
+        if (of.fixed !== undefined) return of.fixed;
+        if (of.key === '_fecha') return today;
+        return out[of.key] || '';
+      });
+      const maxLens2 = {}; imp.fields.forEach(f => { if (f.maxLen) maxLens2[f.key] = f.maxLen; });
+      imp.outputFields.forEach((of, i) => {
+        if (of.fixed !== undefined) return;
+        const max = maxLens2[of.key];
+        if (max && outputRow[i] && String(outputRow[i]).length > max) {
+          outputRow[i] = String(outputRow[i]).substring(0, max);
+        }
+      });
+    }
+
+    // Stock
+    if (currentImporter === 'articulos') {
+      const sMin = parseFloat(out.stock_min) || 0;
+      const sMax = parseFloat(out.stock_max) || 0;
+      const stockInvalid = (sMax > 0 && sMax < sMin) || (sMin > 0 && sMax === 0);
+      if (stockInvalid) {
+        if (!stockMaxMapped && sMax === 0 && !(parseFloat(defaults.stock_max) > 0)) stockMinIgnored++;
+        else rowWarns.push(`Stock inválido (mín: ${sMin}, máx: ${sMax}) — ambos forzados a 0`);
+        out.stock_min = '0';
+        out.stock_max = '0';
+        // Reconstruir outputRow con el valor corregido
+        outputRow = imp.outputFields.map(of => {
+          if (of.fixed !== undefined) return of.fixed;
+          if (of.key === '_fecha') return today;
+          return out[of.key] || '';
+        });
+      }
+    }
+
+    if (rowErrs.length > 0) errors.push({ row: idx+2, data: out, outputRow, errs: rowErrs });
+    else if (rowWarns.length > 0) { warns.push({ row: idx+2, data: out, outputRow, warns: rowWarns }); valid.push(outputRow); }
+    else valid.push(outputRow);
+  });
+
+  convertedValid = valid;
+  convertedErrors = errors;
+  convertedWarns = warns;
+  if (stockMinIgnored > 0) showToast(`Stock mínimo dejado en 0 en ${stockMinIgnored.toLocaleString()} artículos: el archivo no trae stock máximo. Asigna la columna "Stock máximo" o un valor por defecto si lo necesitas.`, 'warn');
+
+  // Aviso condiciones de pago que hay que crear en Defontana
+  const newConds = Object.keys(condPagoNoDefecto);
+  if (newConds.length > 0) {
+    setTimeout(() => {
+      const warn = document.createElement('div');
+      warn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:14px 18px;border-radius:8px;font-size:13px;font-family:var(--font);max-width:380px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;line-height:1.6;';
+      warn.innerHTML = `⚠️ <strong>Debes crear en Defontana la condición de pago:</strong> ${newConds.map(c => `<strong>${c}</strong>`).join(', ')}<br><span style="font-size:12px;color:#B45309;">No existe por defecto; créala antes de importar o los clientes con esa condición fallarán.</span>`;
+      const close = document.createElement('button');
+      close.style.cssText = 'position:absolute;top:8px;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:#92400E;';
+      close.textContent = '×';
+      close.onclick = () => warn.remove();
+      warn.appendChild(close);
+      document.body.appendChild(warn);
+    }, 400);
+  }
+
+  // Aviso unidades no reconocidas
+  const unknownUMs = Object.keys(umPendingPrompts);
+  if (unknownUMs.length > 0) {
+    const listHtml = unknownUMs.map(u => `<strong>${u}</strong>`).join(', ');
+    setTimeout(() => {
+      const warn = document.createElement('div');
+      warn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:14px 18px;border-radius:8px;font-size:13px;font-family:var(--font);max-width:380px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;line-height:1.6;';
+      warn.innerHTML = `⚠️ <strong>Unidades no reconocidas:</strong> ${listHtml}<br><span style="font-size:12px;color:#B45309;">Fueron incluidas como texto literal. Dime con qué código reemplazarlas en Defontana.</span>`;
+      const close = document.createElement('button');
+      close.style.cssText = 'position:absolute;top:8px;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:#92400E;';
+      close.textContent = '×';
+      close.onclick = () => warn.remove();
+      warn.style.position = 'fixed';
+      warn.appendChild(close);
+      document.body.appendChild(warn);
+    }, 400);
+  }
+
+  renderResult();
+  document.getElementById('mapping-section').classList.add('hidden');
+  document.getElementById('result-section').classList.remove('hidden');
+}
+
+function renderResult() {
+  const imp = IMPORTERS[currentImporter];
+  const total = rawData.length;
+  const validCount = convertedValid.length;
+  const errCount = convertedErrors.filter(e => !e.isDup).length;
+  const dupCount = convertedErrors.filter(e => e.isDup).length;
+  const warnCount = convertedWarns.length;
+
+  // Metrics
+  document.getElementById('result-metrics').innerHTML = `
+    <div class="metric-card success"><div class="metric-val">${validCount.toLocaleString()}</div><div class="metric-label">Registros válidos</div></div>
+    <div class="metric-card"><div class="metric-val">${total.toLocaleString()}</div><div class="metric-label">Total procesados</div></div>
+    <div class="metric-card ${warnCount > 0 ? 'warn' : ''}"><div class="metric-val">${warnCount}</div><div class="metric-label">Advertencias</div></div>
+    <div class="metric-card ${(errCount+dupCount) > 0 ? 'danger' : ''}"><div class="metric-val">${errCount + dupCount}</div><div class="metric-label">Errores / Duplicados</div></div>
+  `;
+
+  // Actualizar label tab advertencias
+  document.getElementById('tab-btn-warns').textContent = `⚠️ Advertencias${warnCount > 0 ? ` (${warnCount})` : ''}`;
+
+  // Alerts
+  const alertsEl = document.getElementById('result-alerts');
+  let alerts = '';
+  if (validCount === 0) alerts += `<div class="inline-alert warn">⚠️ No hay registros válidos. Revisa el mapeo de campos.</div>`;
+  if (dupCount > 0) alerts += `<div class="inline-alert info">ℹ️ ${dupCount} registro${dupCount > 1?'s':''} con RUT duplicado fueron omitidos.</div>`;
+  alertsEl.innerHTML = alerts;
+
+  // Preview headers
+  const headers = imp.outputHeaders || imp.fields.map(f => f.label);
+
+  // Valid rows preview
+  const previewRows = convertedValid.slice(0, 50);
+  document.getElementById('preview-table').innerHTML = `
+    <thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+    <tbody>${previewRows.map(row =>
+      `<tr>${row.map((c,i) => `<td class="${i < 2 ? 'highlight':''}" title="${esc(c)}">${esc(String(c||'').substring(0,35))}</td>`).join('')}</tr>`
+    ).join('')}</tbody>
+  `;
+  document.getElementById('preview-meta').textContent =
+    `${convertedValid.length} registros · ${headers.length} columnas · mostrando 1–${Math.min(50, convertedValid.length)}`;
+
+  // Advertencias
+  const warnsWrap = document.getElementById('warns-wrap');
+  if (convertedWarns.length === 0) {
+    warnsWrap.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="empty-title">Sin advertencias</div><div class="empty-desc">Todos los valores están dentro del rango esperado.</div></div>`;
+  } else {
+    warnsWrap.innerHTML = convertedWarns.map(w =>
+      `<div class="error-item warn-row">
+        <span class="err-row-badge warn">Fila ${w.row}</span>
+        <span class="err-msg">${w.warns.join(' · ')}</span>
+      </div>`
+    ).join('');
+  }
+
+  // Errors
+  const errWrap = document.getElementById('errors-wrap');
+  if (convertedErrors.length === 0) {
+    errWrap.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="empty-title">Sin errores</div><div class="empty-desc">Todos los registros son válidos.</div></div>`;
+  } else {
+    errWrap.innerHTML = convertedErrors.map(e =>
+      `<div class="error-item ${e.isDup ? 'dup' : 'err'}">
+        <span class="err-row-badge ${e.isDup ? 'dup':'err'}">Fila ${e.row}</span>
+        <span class="err-msg">${e.errs.join(' · ')}</span>
+      </div>`
+    ).join('');
+  }
+
+  // Download buttons
+  const isInv = currentImporter === 'inventario';
+  const isSimple = currentImporter === 'simple';
+  let btns = '';
+  if (isInv || isSimple) {
+    const label = isSimple ? 'Descargar XLSX (Importador Simple)' : 'Descargar XLSX Defontana';
+    btns = `<button class="btn-dl primary" onclick="doDownloadXLS()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      ${label}
+    </button>`;
+  } else {
+    btns = `<button class="btn-dl primary" onclick="doDownloadTXT()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Descargar TXT Defontana
+    </button>
+    <button class="btn-dl" onclick="doDownloadXLS()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Descargar XLS Defontana
+    </button>`;
+  }
+  if (convertedErrors.length > 0) {
+    btns += `<button class="btn-dl errors" onclick="doDownloadErrors()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Descargar errores (${convertedErrors.length})
+    </button>`;
+  }
+  document.getElementById('download-row').innerHTML = btns;
+}
+
+// ─── GEOGRAFÍA CHILE ────────────────────────────────────────
+// Mapa: normalizedComuna → { ciudad, region }
+const GEO_CL = {
+  // ── REGION ARICA Y PARINACOTA ──
+  'arica': {'distrito':'ARICA','ciudad':'ARICA','region':'REGION ARICA Y PARINACOTA'},
+  'camarones': {'distrito':'CAMARONES','ciudad':'ARICA','region':'REGION ARICA Y PARINACOTA'},
+  'general lagos': {'distrito':'GENERAL LAGOS','ciudad':'PUTRE','region':'REGION ARICA Y PARINACOTA'},
+  'generallagos': {'distrito':'GENERAL LAGOS','ciudad':'PUTRE','region':'REGION ARICA Y PARINACOTA'},
+  'putre': {'distrito':'PUTRE','ciudad':'PUTRE','region':'REGION ARICA Y PARINACOTA'},
+  // ── REGION DE TARAPACA ──
+  'iquique': {'distrito':'IQUIQUE','ciudad':'IQUIQUE','region':'REGION DE TARAPACA'},
+  'alto hospicio': {'distrito':'ALTO HOSPICIO','ciudad':'IQUIQUE','region':'REGION DE TARAPACA'},
+  'altohospicio': {'distrito':'ALTO HOSPICIO','ciudad':'IQUIQUE','region':'REGION DE TARAPACA'},
+  'camina': {'distrito':'CAMINA','ciudad':'POZO ALMONTE','region':'REGION DE TARAPACA'},
+  'colchane': {'distrito':'COLCHANE','ciudad':'POZO ALMONTE','region':'REGION DE TARAPACA'},
+  'huara': {'distrito':'HUARA','ciudad':'POZO ALMONTE','region':'REGION DE TARAPACA'},
+  'pica': {'distrito':'PICA','ciudad':'POZO ALMONTE','region':'REGION DE TARAPACA'},
+  'pozo almonte': {'distrito':'POZO ALMONTE','ciudad':'POZO ALMONTE','region':'REGION DE TARAPACA'},
+  'pozoalmonte': {'distrito':'POZO ALMONTE','ciudad':'POZO ALMONTE','region':'REGION DE TARAPACA'},
+  // ── REGION DE ANTOFAGASTA ──
+  'antofagasta': {'distrito':'ANTOFAGASTA','ciudad':'ANTOFAGASTA','region':'REGION DE ANTOFAGASTA'},
+  'mejillones': {'distrito':'MEJILLONES','ciudad':'ANTOFAGASTA','region':'REGION DE ANTOFAGASTA'},
+  'sierra gorda': {'distrito':'SIERRA GORDA','ciudad':'ANTOFAGASTA','region':'REGION DE ANTOFAGASTA'},
+  'sierragorda': {'distrito':'SIERRA GORDA','ciudad':'ANTOFAGASTA','region':'REGION DE ANTOFAGASTA'},
+  'taltal': {'distrito':'TALTAL','ciudad':'ANTOFAGASTA','region':'REGION DE ANTOFAGASTA'},
+  'calama': {'distrito':'CALAMA','ciudad':'CALAMA','region':'REGION DE ANTOFAGASTA'},
+  'ollague': {'distrito':'OLLAGUE','ciudad':'CALAMA','region':'REGION DE ANTOFAGASTA'},
+  'san pedro de atacama': {'distrito':'SAN PEDRO DE ATACAMA','ciudad':'CALAMA','region':'REGION DE ANTOFAGASTA'},
+  'sanpedrodeatacama': {'distrito':'SAN PEDRO DE ATACAMA','ciudad':'CALAMA','region':'REGION DE ANTOFAGASTA'},
+  'maria elena': {'distrito':'MARIA ELENA','ciudad':'TOCOPILLA','region':'REGION DE ANTOFAGASTA'},
+  'mariaelena': {'distrito':'MARIA ELENA','ciudad':'TOCOPILLA','region':'REGION DE ANTOFAGASTA'},
+  'tocopilla': {'distrito':'TOCOPILLA','ciudad':'TOCOPILLA','region':'REGION DE ANTOFAGASTA'},
+  // ── REGION DE ATACAMA ──
+  'chanaral': {'distrito':'CHAÑARAL','ciudad':'CHAÑARAL','region':'REGION DE ATACAMA'},
+  'diego de almagro': {'distrito':'DIEGO DE ALMAGRO','ciudad':'CHAÑARAL','region':'REGION DE ATACAMA'},
+  'diegodealmagro': {'distrito':'DIEGO DE ALMAGRO','ciudad':'CHAÑARAL','region':'REGION DE ATACAMA'},
+  'copiapo': {'distrito':'COPIAPO','ciudad':'COPIAPO','region':'REGION DE ATACAMA'},
+  'caldera': {'distrito':'CALDERA','ciudad':'COPIAPO','region':'REGION DE ATACAMA'},
+  'tierra amarilla': {'distrito':'TIERRA AMARILLA','ciudad':'COPIAPO','region':'REGION DE ATACAMA'},
+  'tierraamarilla': {'distrito':'TIERRA AMARILLA','ciudad':'COPIAPO','region':'REGION DE ATACAMA'},
+  'vallenar': {'distrito':'VALLENAR','ciudad':'VALLENAR','region':'REGION DE ATACAMA'},
+  'alto del carmen': {'distrito':'ALTO DEL CARMEN','ciudad':'VALLENAR','region':'REGION DE ATACAMA'},
+  'altodelcarmen': {'distrito':'ALTO DEL CARMEN','ciudad':'VALLENAR','region':'REGION DE ATACAMA'},
+  'freirina': {'distrito':'FREIRINA','ciudad':'VALLENAR','region':'REGION DE ATACAMA'},
+  'huasco': {'distrito':'HUASCO','ciudad':'VALLENAR','region':'REGION DE ATACAMA'},
+  // ── REGION COQUIMBO ──
+  'la serena': {'distrito':'LA SERENA','ciudad':'LA SERENA','region':'REGION COQUIMBO'},
+  'laserena': {'distrito':'LA SERENA','ciudad':'LA SERENA','region':'REGION COQUIMBO'},
+  'vicuna': {'distrito':'VICUÑA','ciudad':'LA SERENA','region':'REGION COQUIMBO'},
+  'coquimbo': {'distrito':'COQUIMBO','ciudad':'COQUIMBO','region':'REGION COQUIMBO'},
+  'andacollo': {'distrito':'ANDACOLLO','ciudad':'COQUIMBO','region':'REGION COQUIMBO'},
+  'la higuera': {'distrito':'LA HIGUERA','ciudad':'COQUIMBO','region':'REGION COQUIMBO'},
+  'lahiguera': {'distrito':'LA HIGUERA','ciudad':'COQUIMBO','region':'REGION COQUIMBO'},
+  'paihuano': {'distrito':'PAIHUANO','ciudad':'COQUIMBO','region':'REGION COQUIMBO'},
+  'ovalle': {'distrito':'OVALLE','ciudad':'OVALLE','region':'REGION COQUIMBO'},
+  'combarbala': {'distrito':'COMBARBALA','ciudad':'OVALLE','region':'REGION COQUIMBO'},
+  'monte patria': {'distrito':'MONTE PATRIA','ciudad':'OVALLE','region':'REGION COQUIMBO'},
+  'montepatria': {'distrito':'MONTE PATRIA','ciudad':'OVALLE','region':'REGION COQUIMBO'},
+  'punitaqui': {'distrito':'PUNITAQUI','ciudad':'OVALLE','region':'REGION COQUIMBO'},
+  'rio hurtado': {'distrito':'RIO HURTADO','ciudad':'OVALLE','region':'REGION COQUIMBO'},
+  'riohurtado': {'distrito':'RIO HURTADO','ciudad':'OVALLE','region':'REGION COQUIMBO'},
+  'illapel': {'distrito':'ILLAPEL','ciudad':'ILLAPEL','region':'REGION COQUIMBO'},
+  'canela': {'distrito':'CANELA','ciudad':'ILLAPEL','region':'REGION COQUIMBO'},
+  'los vilos': {'distrito':'LOS VILOS','ciudad':'ILLAPEL','region':'REGION COQUIMBO'},
+  'losvilos': {'distrito':'LOS VILOS','ciudad':'ILLAPEL','region':'REGION COQUIMBO'},
+  'salamanca': {'distrito':'SALAMANCA','ciudad':'ILLAPEL','region':'REGION COQUIMBO'},
+  // ── REGION VALPARAISO ──
+  'la ligua': {'distrito':'LA LIGUA','ciudad':'LA LIGUA','region':'REGION VALPARAISO'},
+  'laligua': {'distrito':'LA LIGUA','ciudad':'LA LIGUA','region':'REGION VALPARAISO'},
+  'cabildo': {'distrito':'CABILDO','ciudad':'LA LIGUA','region':'REGION VALPARAISO'},
+  'papudo': {'distrito':'PAPUDO','ciudad':'LA LIGUA','region':'REGION VALPARAISO'},
+  'petorca': {'distrito':'PETORCA','ciudad':'LA LIGUA','region':'REGION VALPARAISO'},
+  'zapallar': {'distrito':'ZAPALLAR','ciudad':'LA LIGUA','region':'REGION VALPARAISO'},
+  'los andes': {'distrito':'LOS ANDES','ciudad':'LOS ANDES','region':'REGION VALPARAISO'},
+  'losandes': {'distrito':'LOS ANDES','ciudad':'LOS ANDES','region':'REGION VALPARAISO'},
+  'calle larga': {'distrito':'CALLE LARGA','ciudad':'LOS ANDES','region':'REGION VALPARAISO'},
+  'callelarga': {'distrito':'CALLE LARGA','ciudad':'LOS ANDES','region':'REGION VALPARAISO'},
+  'rinconada': {'distrito':'RINCONADA','ciudad':'LOS ANDES','region':'REGION VALPARAISO'},
+  'san esteban': {'distrito':'SAN ESTEBAN','ciudad':'LOS ANDES','region':'REGION VALPARAISO'},
+  'sanesteban': {'distrito':'SAN ESTEBAN','ciudad':'LOS ANDES','region':'REGION VALPARAISO'},
+  'san felipe': {'distrito':'SAN FELIPE','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'sanfelipe': {'distrito':'SAN FELIPE','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'catemu': {'distrito':'CATEMU','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'llay llay': {'distrito':'LLAY LLAY','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'llayllay': {'distrito':'LLAY LLAY','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'panquehue': {'distrito':'PANQUEHUE','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'putaendo': {'distrito':'PUTAENDO','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'santa maria': {'distrito':'SANTA MARIA','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'santamaria': {'distrito':'SANTA MARIA','ciudad':'SAN FELIPE','region':'REGION VALPARAISO'},
+  'quillota': {'distrito':'QUILLOTA','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'hijuelas': {'distrito':'HIJUELAS','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'la calera': {'distrito':'LA CALERA','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'lacalera': {'distrito':'LA CALERA','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'la cruz': {'distrito':'LA CRUZ','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'lacruz': {'distrito':'LA CRUZ','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'limache': {'distrito':'LIMACHE','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'nogales': {'distrito':'NOGALES','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'olmue': {'distrito':'OLMUE','ciudad':'QUILLOTA','region':'REGION VALPARAISO'},
+  'valparaiso': {'distrito':'VALPARAISO','ciudad':'VALPARAISO','region':'REGION VALPARAISO'},
+  'casablanca': {'distrito':'CASABLANCA','ciudad':'VALPARAISO','region':'REGION VALPARAISO'},
+  'juan fernandez': {'distrito':'JUAN FERNANDEZ','ciudad':'VALPARAISO','region':'REGION VALPARAISO'},
+  'juanfernandez': {'distrito':'JUAN FERNANDEZ','ciudad':'VALPARAISO','region':'REGION VALPARAISO'},
+  'puchuncavi': {'distrito':'PUCHUNCAVI','ciudad':'VALPARAISO','region':'REGION VALPARAISO'},
+  'quintero': {'distrito':'QUINTERO','ciudad':'VALPARAISO','region':'REGION VALPARAISO'},
+  'san antonio': {'distrito':'SAN ANTONIO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'sanantonio': {'distrito':'SAN ANTONIO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'algarrobo': {'distrito':'ALGARROBO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'cartagena': {'distrito':'CARTAGENA','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'el quisco': {'distrito':'EL QUISCO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'elquisco': {'distrito':'EL QUISCO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'el tabo': {'distrito':'EL TABO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'eltabo': {'distrito':'EL TABO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'santo domingo': {'distrito':'SANTO DOMINGO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'santodomingo': {'distrito':'SANTO DOMINGO','ciudad':'SAN ANTONIO','region':'REGION VALPARAISO'},
+  'isla de pascua': {'distrito':'ISLA DE PASCUA','ciudad':'ISLA DE PASCUA','region':'REGION VALPARAISO'},
+  'isladepascua': {'distrito':'ISLA DE PASCUA','ciudad':'ISLA DE PASCUA','region':'REGION VALPARAISO'},
+  'quilpue': {'distrito':'QUILPUE','ciudad':'QUILPUE','region':'REGION VALPARAISO'},
+  'villa alemana': {'distrito':'VILLA ALEMANA','ciudad':'QUILPUE','region':'REGION VALPARAISO'},
+  'villaalemana': {'distrito':'VILLA ALEMANA','ciudad':'QUILPUE','region':'REGION VALPARAISO'},
+  'con-con': {'distrito':'CON-CON','ciudad':'QUILPUE','region':'REGION VALPARAISO'},
+  'vina del mar': {'distrito':'VIÑA DEL MAR','ciudad':'VIÑA DEL MAR','region':'REGION VALPARAISO'},
+  'vinadelmar': {'distrito':'VIÑA DEL MAR','ciudad':'VIÑA DEL MAR','region':'REGION VALPARAISO'},
+  // ── REGION METROPOLITANA ──
+  'alhue': {'distrito':'ALHUE','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'buin': {'distrito':'BUIN','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'calera de tango': {'distrito':'CALERA DE TANGO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'caleradetango': {'distrito':'CALERA DE TANGO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'cerrillos': {'distrito':'CERRILLOS','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'cerro navia': {'distrito':'CERRO NAVIA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'cerronavia': {'distrito':'CERRO NAVIA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'colina': {'distrito':'COLINA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'conchali': {'distrito':'CONCHALI','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'curacavi': {'distrito':'CURACAVI','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'el bosque': {'distrito':'EL BOSQUE','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'elbosque': {'distrito':'EL BOSQUE','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'el monte': {'distrito':'EL MONTE','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'elmonte': {'distrito':'EL MONTE','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'estacion central': {'distrito':'ESTACION CENTRAL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'estacioncentral': {'distrito':'ESTACION CENTRAL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'huechuraba': {'distrito':'HUECHURABA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'independencia': {'distrito':'INDEPENDENCIA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'isla de maipo': {'distrito':'ISLA DE MAIPO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'islademaipo': {'distrito':'ISLA DE MAIPO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'la cisterna': {'distrito':'LA CISTERNA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lacisterna': {'distrito':'LA CISTERNA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'la florida': {'distrito':'LA FLORIDA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'laflorida': {'distrito':'LA FLORIDA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'la granja': {'distrito':'LA GRANJA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lagranja': {'distrito':'LA GRANJA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'la pintana': {'distrito':'LA PINTANA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lapintana': {'distrito':'LA PINTANA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'la reina': {'distrito':'LA REINA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lareina': {'distrito':'LA REINA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lampa': {'distrito':'LAMPA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'las condes': {'distrito':'LAS CONDES','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lascondes': {'distrito':'LAS CONDES','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lo barnechea': {'distrito':'LO BARNECHEA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lobarnechea': {'distrito':'LO BARNECHEA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lo espejo': {'distrito':'LO ESPEJO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'loespejo': {'distrito':'LO ESPEJO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'lo prado': {'distrito':'LO PRADO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'loprado': {'distrito':'LO PRADO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'macul': {'distrito':'MACUL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'maipu': {'distrito':'MAIPU','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'maria pinto': {'distrito':'MARIA PINTO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'mariapinto': {'distrito':'MARIA PINTO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'melipilla': {'distrito':'MELIPILLA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'nunoa': {'distrito':'NUÑOA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'padre hurtado': {'distrito':'PADRE HURTADO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'padrehurtado': {'distrito':'PADRE HURTADO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'paine': {'distrito':'PAINE','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'pedro aguirre cerda': {'distrito':'PEDRO AGUIRRE CERDA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'pedroaguirrecerda': {'distrito':'PEDRO AGUIRRE CERDA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'penaflor': {'distrito':'PEÑAFLOR','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'penalolen': {'distrito':'PEÑALOLEN','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'pirque': {'distrito':'PIRQUE','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'providencia': {'distrito':'PROVIDENCIA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'pudahuel': {'distrito':'PUDAHUEL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'puente alto': {'distrito':'PUENTE ALTO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'puentealto': {'distrito':'PUENTE ALTO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'quilicura': {'distrito':'QUILICURA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'quinta normal': {'distrito':'QUINTA NORMAL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'quintanormal': {'distrito':'QUINTA NORMAL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'recoleta': {'distrito':'RECOLETA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'renca': {'distrito':'RENCA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'san bernardo': {'distrito':'SAN BERNARDO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'sanbernardo': {'distrito':'SAN BERNARDO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'san joaquin': {'distrito':'SAN JOAQUIN','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'sanjoaquin': {'distrito':'SAN JOAQUIN','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'san jose de maipo': {'distrito':'SAN JOSE DE MAIPO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'sanjosedemaipo': {'distrito':'SAN JOSE DE MAIPO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'san miguel': {'distrito':'SAN MIGUEL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'sanmiguel': {'distrito':'SAN MIGUEL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'san pedro': {'distrito':'SAN PEDRO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'sanpedro': {'distrito':'SAN PEDRO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'san ramon': {'distrito':'SAN RAMON','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'sanramon': {'distrito':'SAN RAMON','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'santiago': {'distrito':'SANTIAGO','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'talagante': {'distrito':'TALAGANTE','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'til til': {'distrito':'TIL TIL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'tiltil': {'distrito':'TIL TIL','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  'vitacura': {'distrito':'VITACURA','ciudad':'SANTIAGO','region':'REGION METROPOLITANA'},
+  // ── LIBERTADOR GENERAL BERNARDO O ──
+  'rancagua': {'distrito':'RANCAGUA','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'codegua': {'distrito':'CODEGUA','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'coinco': {'distrito':'COINCO','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'coltauco': {'distrito':'COLTAUCO','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'donihue': {'distrito':'DOÑIHUE','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'graneros': {'distrito':'GRANEROS','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'las cabras': {'distrito':'LAS CABRAS','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'lascabras': {'distrito':'LAS CABRAS','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'machali': {'distrito':'MACHALI','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'malloa': {'distrito':'MALLOA','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'mostazal': {'distrito':'MOSTAZAL','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'olivar': {'distrito':'OLIVAR','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'peumo': {'distrito':'PEUMO','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'pichidegua': {'distrito':'PICHIDEGUA','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'quinta de tilcoco': {'distrito':'QUINTA DE TILCOCO','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'quintadetilcoco': {'distrito':'QUINTA DE TILCOCO','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'rengo': {'distrito':'RENGO','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'requinoa': {'distrito':'REQUINOA','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'san vicente de t-t': {'distrito':'SAN VICENTE DE T-T','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'sanvicentedet-t': {'distrito':'SAN VICENTE DE T-T','ciudad':'RANCAGUA','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'san fernando': {'distrito':'SAN FERNANDO','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'sanfernando': {'distrito':'SAN FERNANDO','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'chepica': {'distrito':'CHEPICA','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'chimbarongo': {'distrito':'CHIMBARONGO','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'lolol': {'distrito':'LOLOL','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'nancagua': {'distrito':'NANCAGUA','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'palmilla': {'distrito':'PALMILLA','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'peralillo': {'distrito':'PERALILLO','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'placilla': {'distrito':'PLACILLA','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'pumanque': {'distrito':'PUMANQUE','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'santa cruz': {'distrito':'SANTA CRUZ','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'santacruz': {'distrito':'SANTA CRUZ','ciudad':'SAN FERNANDO','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'pichilemu': {'distrito':'PICHILEMU','ciudad':'PICHILEMU','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'la estrella': {'distrito':'LA ESTRELLA','ciudad':'PICHILEMU','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'laestrella': {'distrito':'LA ESTRELLA','ciudad':'PICHILEMU','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'litueche': {'distrito':'LITUECHE','ciudad':'PICHILEMU','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'marchihue': {'distrito':'MARCHIHUE','ciudad':'PICHILEMU','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'navidad': {'distrito':'NAVIDAD','ciudad':'PICHILEMU','region':'LIBERTADOR GENERAL BERNARDO O'},
+  'paredones': {'distrito':'PAREDONES','ciudad':'PICHILEMU','region':'LIBERTADOR GENERAL BERNARDO O'},
+  // ── REGION DEL MAULE ──
+  'curico': {'distrito':'CURICO','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'hualane': {'distrito':'HUALANE','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'licanten': {'distrito':'LICANTEN','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'molina': {'distrito':'MOLINA','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'rauco': {'distrito':'RAUCO','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'romeral': {'distrito':'ROMERAL','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'sagrada familia': {'distrito':'SAGRADA FAMILIA','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'sagradafamilia': {'distrito':'SAGRADA FAMILIA','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'teno': {'distrito':'TENO','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'vichuquen': {'distrito':'VICHUQUEN','ciudad':'CURICO','region':'REGION DEL MAULE'},
+  'talca': {'distrito':'TALCA','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'curepto': {'distrito':'CUREPTO','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'empedrado': {'distrito':'EMPEDRADO','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'maule': {'distrito':'MAULE','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'pelarco': {'distrito':'PELARCO','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'pencahue': {'distrito':'PENCAHUE','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'rio claro': {'distrito':'RIO CLARO','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'rioclaro': {'distrito':'RIO CLARO','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'san clemente': {'distrito':'SAN CLEMENTE','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'sanclemente': {'distrito':'SAN CLEMENTE','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'san rafael': {'distrito':'SAN RAFAEL','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'sanrafael': {'distrito':'SAN RAFAEL','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'constitucion': {'distrito':'CONSTITUCION','ciudad':'TALCA','region':'REGION DEL MAULE'},
+  'linares': {'distrito':'LINARES','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'colbun': {'distrito':'COLBUN','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'longavi': {'distrito':'LONGAVI','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'parral': {'distrito':'PARRAL','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'retiro': {'distrito':'RETIRO','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'san javier': {'distrito':'SAN JAVIER','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'sanjavier': {'distrito':'SAN JAVIER','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'villa alegre': {'distrito':'VILLA ALEGRE','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'villaalegre': {'distrito':'VILLA ALEGRE','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'yerbas buenas': {'distrito':'YERBAS BUENAS','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'yerbasbuenas': {'distrito':'YERBAS BUENAS','ciudad':'LINARES','region':'REGION DEL MAULE'},
+  'cauquenes': {'distrito':'CAUQUENES','ciudad':'CAUQUENES','region':'REGION DEL MAULE'},
+  'chanco': {'distrito':'CHANCO','ciudad':'CAUQUENES','region':'REGION DEL MAULE'},
+  'pelluhue': {'distrito':'PELLUHUE','ciudad':'CAUQUENES','region':'REGION DEL MAULE'},
+  // ── REGION DE ÑUBLE ──
+  'chillan': {'distrito':'CHILLAN','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'bulnes': {'distrito':'BULNES','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'chillan viejo': {'distrito':'CHILLÁN VIEJO','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'chillanviejo': {'distrito':'CHILLÁN VIEJO','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'coihueco': {'distrito':'COIHUECO','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'el carmen': {'distrito':'EL CARMEN','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'elcarmen': {'distrito':'EL CARMEN','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'pemuco': {'distrito':'PEMUCO','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'pinto': {'distrito':'PINTO','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'quillon': {'distrito':'QUILLON','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'quinchamali': {'distrito':'QUINCHAMALÍ','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'san ignacio': {'distrito':'SAN IGNACIO','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'sanignacio': {'distrito':'SAN IGNACIO','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'yungay': {'distrito':'YUNGAY','ciudad':'CHILLAN','region':'REGION DE ÑUBLE'},
+  'quirihue': {'distrito':'QUIRIHUE','ciudad':'QUIRIHUE','region':'REGION DE ÑUBLE'},
+  'cobquecura': {'distrito':'COBQUECURA','ciudad':'QUIRIHUE','region':'REGION DE ÑUBLE'},
+  'coelemu': {'distrito':'COELEMU','ciudad':'QUIRIHUE','region':'REGION DE ÑUBLE'},
+  'ninhue': {'distrito':'NINHUE','ciudad':'QUIRIHUE','region':'REGION DE ÑUBLE'},
+  'portezuelo': {'distrito':'PORTEZUELO','ciudad':'QUIRIHUE','region':'REGION DE ÑUBLE'},
+  'ranquil': {'distrito':'RANQUIL','ciudad':'QUIRIHUE','region':'REGION DE ÑUBLE'},
+  'treguaco': {'distrito':'TREGUACO','ciudad':'QUIRIHUE','region':'REGION DE ÑUBLE'},
+  'san carlos': {'distrito':'SAN CARLOS','ciudad':'SAN CARLOS','region':'REGION DE ÑUBLE'},
+  'sancarlos': {'distrito':'SAN CARLOS','ciudad':'SAN CARLOS','region':'REGION DE ÑUBLE'},
+  'niquen': {'distrito':'NIQUEN','ciudad':'SAN CARLOS','region':'REGION DE ÑUBLE'},
+  'san fabian': {'distrito':'SAN FABIAN','ciudad':'SAN CARLOS','region':'REGION DE ÑUBLE'},
+  'sanfabian': {'distrito':'SAN FABIAN','ciudad':'SAN CARLOS','region':'REGION DE ÑUBLE'},
+  'san nicolas': {'distrito':'SAN NICOLAS','ciudad':'SAN CARLOS','region':'REGION DE ÑUBLE'},
+  'sannicolas': {'distrito':'SAN NICOLAS','ciudad':'SAN CARLOS','region':'REGION DE ÑUBLE'},
+  // ── REGION DEL BIO BIO ──
+  'concepcion': {'distrito':'CONCEPCION','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'chiguayante': {'distrito':'CHIGUAYANTE','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'coronel': {'distrito':'CORONEL','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'florida': {'distrito':'FLORIDA','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'hualpen': {'distrito':'HUALPÉN','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'hualqui': {'distrito':'HUALQUI','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'lota': {'distrito':'LOTA','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'penco': {'distrito':'PENCO','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'san pedro de la paz': {'distrito':'SAN PEDRO DE LA PAZ','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'sanpedrodelapaz': {'distrito':'SAN PEDRO DE LA PAZ','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'santa juana': {'distrito':'SANTA JUANA','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'santajuana': {'distrito':'SANTA JUANA','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'talcahuano': {'distrito':'TALCAHUANO','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'tome': {'distrito':'TOME','ciudad':'CONCEPCION','region':'REGION DEL BIO BIO'},
+  'lebu': {'distrito':'LEBU','ciudad':'LEBU','region':'REGION DEL BIO BIO'},
+  'arauco': {'distrito':'ARAUCO','ciudad':'LEBU','region':'REGION DEL BIO BIO'},
+  'canete': {'distrito':'CANETE','ciudad':'LEBU','region':'REGION DEL BIO BIO'},
+  'contulmo': {'distrito':'CONTULMO','ciudad':'LEBU','region':'REGION DEL BIO BIO'},
+  'curanilahue': {'distrito':'CURANILAHUE','ciudad':'LEBU','region':'REGION DEL BIO BIO'},
+  'los alamos': {'distrito':'LOS ALAMOS','ciudad':'LEBU','region':'REGION DEL BIO BIO'},
+  'losalamos': {'distrito':'LOS ALAMOS','ciudad':'LEBU','region':'REGION DEL BIO BIO'},
+  'tirua': {'distrito':'TIRUA','ciudad':'LEBU','region':'REGION DEL BIO BIO'},
+  'los angeles': {'distrito':'LOS ANGELES','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'losangeles': {'distrito':'LOS ANGELES','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'alto bio-bio': {'distrito':'ALTO BÍO-BÍO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'altobio-bio': {'distrito':'ALTO BÍO-BÍO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'antuco': {'distrito':'ANTUCO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'cabrero': {'distrito':'CABRERO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'laja': {'distrito':'LAJA','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'mulchen': {'distrito':'MULCHEN','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'nacimiento': {'distrito':'NACIMIENTO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'negrete': {'distrito':'NEGRETE','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'quilaco': {'distrito':'QUILACO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'quilleco': {'distrito':'QUILLECO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'san rosendo': {'distrito':'SAN ROSENDO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'sanrosendo': {'distrito':'SAN ROSENDO','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'santa barbara': {'distrito':'SANTA BARBARA','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'santabarbara': {'distrito':'SANTA BARBARA','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'tucapel': {'distrito':'TUCAPEL','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  'yumbel': {'distrito':'YUMBEL','ciudad':'LOS ANGELES','region':'REGION DEL BIO BIO'},
+  // ── REGION DE LA ARAUCANIA ──
+  'temuco': {'distrito':'TEMUCO','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'carahue': {'distrito':'CARAHUE','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'cholchol': {'distrito':'CHOLCHOL','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'cunco': {'distrito':'CUNCO','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'curarrehue': {'distrito':'CURARREHUE','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'freire': {'distrito':'FREIRE','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'galvarino': {'distrito':'GALVARINO','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'gorbea': {'distrito':'GORBEA','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'huiscapi': {'distrito':'HUISCAPI','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'lautaro': {'distrito':'LAUTARO','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'loncoche': {'distrito':'LONCOCHE','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'melipeuco': {'distrito':'MELIPEUCO','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'nueva imperial': {'distrito':'NUEVA IMPERIAL','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'nuevaimperial': {'distrito':'NUEVA IMPERIAL','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'padre las casas': {'distrito':'PADRE LAS CASAS','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'padrelascasas': {'distrito':'PADRE LAS CASAS','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'perquenco': {'distrito':'PERQUENCO','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'pitrufquen': {'distrito':'PITRUFQUEN','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'pucon': {'distrito':'PUCON','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'saavedra': {'distrito':'SAAVEDRA','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'teodoro schmidt': {'distrito':'TEODORO SCHMIDT','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'teodoroschmidt': {'distrito':'TEODORO SCHMIDT','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'tolten': {'distrito':'TOLTEN','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'vilcun': {'distrito':'VILCUN','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'villarrica': {'distrito':'VILLARRICA','ciudad':'TEMUCO','region':'REGION DE LA ARAUCANIA'},
+  'angol': {'distrito':'ANGOL','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'collipulli': {'distrito':'COLLIPULLI','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'curacautin': {'distrito':'CURACAUTIN','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'ercilla': {'distrito':'ERCILLA','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'lonquimay': {'distrito':'LONQUIMAY','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'los sauces': {'distrito':'LOS SAUCES','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'lossauces': {'distrito':'LOS SAUCES','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'lumaco': {'distrito':'LUMACO','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'puren': {'distrito':'PUREN','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'renaico': {'distrito':'RENAICO','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'traiguen': {'distrito':'TRAIGUEN','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  'victoria': {'distrito':'VICTORIA','ciudad':'ANGOL','region':'REGION DE LA ARAUCANIA'},
+  // ── REGION DE LOS RIOS ──
+  'valdivia': {'distrito':'VALDIVIA','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'corral': {'distrito':'CORRAL','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'lanco': {'distrito':'LANCO','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'los lagos': {'distrito':'LOS LAGOS','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'loslagos': {'distrito':'LOS LAGOS','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'mafil': {'distrito':'MAFIL','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'mariquina': {'distrito':'MARIQUINA','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'paillaco': {'distrito':'PAILLACO','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'panguipulli': {'distrito':'PANGUIPULLI','ciudad':'VALDIVIA','region':'REGION DE LOS RIOS'},
+  'la union': {'distrito':'LA UNION','ciudad':'LA UNION','region':'REGION DE LOS RIOS'},
+  'launion': {'distrito':'LA UNION','ciudad':'LA UNION','region':'REGION DE LOS RIOS'},
+  'futrono': {'distrito':'FUTRONO','ciudad':'LA UNION','region':'REGION DE LOS RIOS'},
+  'lago ranco': {'distrito':'LAGO RANCO','ciudad':'LA UNION','region':'REGION DE LOS RIOS'},
+  'lagoranco': {'distrito':'LAGO RANCO','ciudad':'LA UNION','region':'REGION DE LOS RIOS'},
+  'rio bueno': {'distrito':'RIO BUENO','ciudad':'LA UNION','region':'REGION DE LOS RIOS'},
+  'riobueno': {'distrito':'RIO BUENO','ciudad':'LA UNION','region':'REGION DE LOS RIOS'},
+  // ── REGION LOS LAGOS ──
+  'puerto montt': {'distrito':'PUERTO MONTT','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'puertomontt': {'distrito':'PUERTO MONTT','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'calbuco': {'distrito':'CALBUCO','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'cochamo': {'distrito':'COCHAMO','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'fresia': {'distrito':'FRESIA','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'frutillar': {'distrito':'FRUTILLAR','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'llanquihue': {'distrito':'LLANQUIHUE','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'los muermos': {'distrito':'LOS MUERMOS','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'losmuermos': {'distrito':'LOS MUERMOS','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'maullin': {'distrito':'MAULLIN','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'puerto varas': {'distrito':'PUERTO VARAS','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'puertovaras': {'distrito':'PUERTO VARAS','ciudad':'PUERTO MONTT','region':'REGION LOS LAGOS'},
+  'castro': {'distrito':'CASTRO','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'ancud': {'distrito':'ANCUD','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'chonchi': {'distrito':'CHONCHI','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'curaco de velez': {'distrito':'CURACO DE VELEZ','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'curacodevelez': {'distrito':'CURACO DE VELEZ','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'dalcahue': {'distrito':'DALCAHUE','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'puqueldon': {'distrito':'PUQUELDON','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'queilen': {'distrito':'QUEILEN','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'quellon': {'distrito':'QUELLON','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'quemchi': {'distrito':'QUEMCHI','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'quinchao': {'distrito':'QUINCHAO','ciudad':'CASTRO','region':'REGION LOS LAGOS'},
+  'osorno': {'distrito':'OSORNO','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'puerto octay': {'distrito':'PUERTO OCTAY','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'puertooctay': {'distrito':'PUERTO OCTAY','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'purranque': {'distrito':'PURRANQUE','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'puyehue': {'distrito':'PUYEHUE','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'rio negro': {'distrito':'RIO NEGRO','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'rionegro': {'distrito':'RIO NEGRO','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'san juan de la costa': {'distrito':'SAN JUAN DE LA COSTA','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'sanjuandelacosta': {'distrito':'SAN JUAN DE LA COSTA','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'san pablo': {'distrito':'SAN PABLO','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'sanpablo': {'distrito':'SAN PABLO','ciudad':'OSORNO','region':'REGION LOS LAGOS'},
+  'chaiten': {'distrito':'CHAITEN','ciudad':'CHAITEN','region':'REGION LOS LAGOS'},
+  'futaleufu': {'distrito':'FUTALEUFU','ciudad':'CHAITEN','region':'REGION LOS LAGOS'},
+  'hualaihue': {'distrito':'HUALAIHUE','ciudad':'CHAITEN','region':'REGION LOS LAGOS'},
+  'palena': {'distrito':'PALENA','ciudad':'CHAITEN','region':'REGION LOS LAGOS'},
+  // ── AYSEN G. C. IBAÑEZ DEL CAMPO ──
+  'coyhaique': {'distrito':'COYHAIQUE','ciudad':'COYHAIQUE','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'lago verde': {'distrito':'LAGO VERDE','ciudad':'COYHAIQUE','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'lagoverde': {'distrito':'LAGO VERDE','ciudad':'COYHAIQUE','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'aysen': {'distrito':'AYSEN','ciudad':'PUERTO AYSEN','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'cisnes': {'distrito':'CISNES','ciudad':'PUERTO AYSEN','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'guaitecas': {'distrito':'GUAITECAS','ciudad':'PUERTO AYSEN','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'cochrane': {'distrito':'COCHRANE','ciudad':'COCHRANE','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'ohiggins': {'distrito':'OHIGGINS','ciudad':'COCHRANE','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'tortel': {'distrito':'TORTEL','ciudad':'COCHRANE','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'chile chico': {'distrito':'CHILE CHICO','ciudad':'CHILE CHICO','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'chilechico': {'distrito':'CHILE CHICO','ciudad':'CHILE CHICO','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'rio ibanez': {'distrito':'RIO IBANEZ','ciudad':'CHILE CHICO','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  'rioibanez': {'distrito':'RIO IBANEZ','ciudad':'CHILE CHICO','region':'AYSEN G. C. IBAÑEZ DEL CAMPO'},
+  // ── MAGALLANES Y LA ANT. CHILENA ──
+  'punta arenas': {'distrito':'PUNTA ARENAS','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'puntaarenas': {'distrito':'PUNTA ARENAS','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'laguna blanca': {'distrito':'LAGUNA BLANCA','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'lagunablanca': {'distrito':'LAGUNA BLANCA','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'rio verde': {'distrito':'RIO VERDE','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'rioverde': {'distrito':'RIO VERDE','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'san gregorio': {'distrito':'SAN GREGORIO','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'sangregorio': {'distrito':'SAN GREGORIO','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'la antartica': {'distrito':'LA ANTARTICA','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'laantartica': {'distrito':'LA ANTARTICA','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'cabo de hornos': {'distrito':'CABO DE HORNOS','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'cabodehornos': {'distrito':'CABO DE HORNOS','ciudad':'PUNTA ARENAS','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'natales': {'distrito':'NATALES','ciudad':'PUERTO NATALES','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'torres del paine': {'distrito':'TORRES DEL PAINE','ciudad':'PUERTO NATALES','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'torresdelpaine': {'distrito':'TORRES DEL PAINE','ciudad':'PUERTO NATALES','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'puerto porvenir': {'distrito':'PUERTO PORVENIR','ciudad':'PORVENIR','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'puertoporvenir': {'distrito':'PUERTO PORVENIR','ciudad':'PORVENIR','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'primavera': {'distrito':'PRIMAVERA','ciudad':'PORVENIR','region':'MAGALLANES Y LA ANT. CHILENA'},
+  'timaukel': {'distrito':'TIMAUKEL','ciudad':'PORVENIR','region':'MAGALLANES Y LA ANT. CHILENA'},
+};
+
+function normalizeGeo(str) {
+  if (!str) return '';
+  return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+}
+
+function lookupGeo(comuna) {
+  if (!comuna) return null;
+  const withSpaces = normalizeGeo(comuna);
+  const noSpaces   = withSpaces.replace(/\s/g,'');
+  return GEO_CL[withSpaces] || GEO_CL[noSpaces] || null;
+}
+
+const REGION_ALIASES = [
+  { keys: ['metropolitana'],                                     val: 'REGION METROPOLITANA' },
+  { keys: ['tarapaca'],                                          val: 'REGION DE TARAPACA' },
+  { keys: ['arica', 'parinacota'],                               val: 'REGION ARICA Y PARINACOTA' },
+  { keys: ['antofagasta'],                                       val: 'REGION DE ANTOFAGASTA' },
+  { keys: ['atacama'],                                           val: 'REGION DE ATACAMA' },
+  { keys: ['coquimbo'],                                          val: 'REGION COQUIMBO' },
+  { keys: ['valparaiso'],                                        val: 'REGION VALPARAISO' },
+  { keys: ['libertador', 'ohiggins', "o'higgins", 'bernardo'],   val: 'LIBERTADOR GENERAL BERNARDO O' },
+  { keys: ['maule'],                                             val: 'REGION DEL MAULE' },
+  { keys: ['nuble', 'ñuble'],                                    val: 'REGION DE ÑUBLE' },
+  { keys: ['biobio', 'bio bio', 'bío', 'bio-bio'],               val: 'REGION DEL BIO BIO' },
+  { keys: ['araucania', 'araucanía'],                            val: 'REGION DE LA ARAUCANIA' },
+  { keys: ['los rios', 'los ríos', 'losrios'],                   val: 'REGION DE LOS RIOS' },
+  { keys: ['los lagos', 'loslagos'],                             val: 'REGION LOS LAGOS' },
+  { keys: ['aysen', 'aysén', 'ibanez', 'ibáñez'],               val: 'AYSEN G. C. IBAÑEZ DEL CAMPO' },
+  { keys: ['magallanes', 'antartica', 'antártica'],              val: 'MAGALLANES Y LA ANT. CHILENA' },
+];
+
+function canonicalRegion(str) {
+  if (!str) return null;
+  const n = normalizeGeo(str);
+  for (const alias of REGION_ALIASES) {
+    if (alias.keys.some(k => n.includes(normalizeGeo(k)))) return alias.val;
+  }
+  return null;
+}
+
+function validateGeo(out, rowWarns) {
+  const isCliente = (currentImporter === 'clientes' || currentImporter === 'proveedores');
+  if (!isCliente) return;
+
+  const comNorm = normalizeGeo(out.distrito);
+
+  if (comNorm && comNorm !== 'default') {
+    const geo = lookupGeo(out.distrito);
+    if (geo) {
+      if (geo.distrito) out.distrito = geo.distrito;
+      out.ciudad = geo.ciudad;
+      out.estado = geo.region;
+      return;
+    }
+  }
+
+  const ciudadNorm = normalizeGeo(out.ciudad);
+  if (ciudadNorm && ciudadNorm !== 'default') {
+    const geoByCity = lookupGeo(out.ciudad);
+    if (geoByCity) {
+      const regionEmpty2 = !out.estado || out.estado.trim() === '' || out.estado.toLowerCase() === 'default';
+      if (regionEmpty2) {
+        out.estado = geoByCity.region;
+      }
+      return;
+    }
+  }
+
+  const regionRaw = out.estado;
+  const regionEmpty = !regionRaw || regionRaw.trim() === '' || regionRaw.toLowerCase() === 'default';
+  if (!regionEmpty) {
+    const canon = canonicalRegion(regionRaw);
+    if (canon && canon !== regionRaw) {
+      out.estado = canon;
+    }
+  }
+}
+
+
+function switchResultTab(name, btn) {
+  document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-valid').classList.toggle('active', name === 'valid');
+  document.getElementById('tab-warns').classList.toggle('active', name === 'warns');
+  document.getElementById('tab-errors').classList.toggle('active', name === 'errors');
+}
+
+// ─── DOWNLOADS ───────────────────────────────────────────────
+function getHeaders() {
+  const imp = IMPORTERS[currentImporter];
+  return imp.outputHeaders || imp.fields.map(f => f.label);
+}
+
+function doDownloadTXT() {
+  if (!convertedValid.length) { showToast('No hay datos válidos.', 'warn'); return; }
+  const headers = getHeaders();
+  const lines = [headers.join('\t'), ...convertedValid.map(r => r.join('\t'))].join('\r\n');
+  const blob = new Blob([lines], { type:'text/plain;charset=utf-8' });
+  trigger(blob, outName('_defontana.txt'));
+}
+
+function doDownloadXLS() {
+  if (!convertedValid.length) { showToast('No hay datos válidos.', 'warn'); return; }
+  const headers = getHeaders();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...convertedValid]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Importador');
+  const isInv2 = currentImporter === 'inventario';
+  const isSimple2 = currentImporter === 'simple';
+  XLSX.writeFile(wb, outName('_defontana.' + (isInv2 || isSimple2 ? 'xlsx' : 'xls')), { bookType: (isInv2 || isSimple2) ? 'xlsx' : 'xls' });
+}
+
+function doDownloadErrors() {
+  if (!convertedErrors.length) return;
+  const imp = IMPORTERS[currentImporter];
+  const headers = [...(imp.outputHeaders || imp.fields.map(f => f.label)), 'Errores'];
+  const rows = convertedErrors.map(e => [...(e.outputRow || []), e.errs.join('; ')]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Errores');
+  XLSX.writeFile(wb, outName('_errores.xlsx'));
+}
+
+// Nombre de salida: base + sufijo, con el largo total limitado a 50 caracteres (restricción del sistema)
+function outName(suffix) {
+  const max = 50 - suffix.length;
+  return baseName().slice(0, max).replace(/[\s._-]+$/,'') + suffix;
+}
+
+function baseName() { return fileName.replace(/\.[^.]+$/,'') || currentImporter; }
+
+function trigger(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 200);
+}
+
+// ─── TOAST ───────────────────────────────────────────────────
+function showToast(msg, type='info') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 16px;border-radius:8px;font-size:13px;font-weight:500;font-family:var(--font);max-width:320px;box-shadow:0 4px 16px rgba(0,0,0,.12);animation:fadeIn .2s ease;`;
+  t.style.background = type === 'warn' ? '#FFFBEB' : '#EBF0F6';
+  t.style.color = type === 'warn' ? '#D97706' : '#1A3A5C';
+  t.style.border = `1px solid ${type === 'warn' ? '#FDE68A' : '#C5D4E5'}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+</script>
+</body>
+</html>
