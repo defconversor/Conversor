@@ -1220,11 +1220,15 @@ function handleFile(event) {
   reader.onload = async e => {
     try {
       if (ext === 'zip') {
-        const inner = await unzipFirst(e.target.result);
-        if (!inner) { showToast('El ZIP no contiene un archivo XLSX, XLS, CSV o TXT.', 'warn'); return; }
-        fileName = inner.name;
-        const iext = inner.name.split('.').pop().toLowerCase();
-        iext === 'csv' || iext === 'txt' ? parseCSV(new TextDecoder('utf-8').decode(inner.data)) : parseExcel(inner.data);
+        const inner = await unzipAll(e.target.result);
+        if (!inner.length) { showToast('El ZIP no contiene un archivo XLSX, XLS, CSV o TXT.', 'warn'); return; }
+        if (inner.length === 1) {
+          fileName = inner[0].name;
+          const iext = fileName.split('.').pop().toLowerCase();
+          iext === 'csv' || iext === 'txt' ? parseCSV(new TextDecoder('utf-8').decode(inner[0].data)) : parseExcel(inner[0].data);
+        } else {
+          mergeZipFiles(inner, file.name);
+        }
       } else {
         ext === 'csv' || ext === 'txt' ? parseCSV(e.target.result) : parseExcel(e.target.result);
       }
@@ -1233,12 +1237,13 @@ function handleFile(event) {
   ext === 'csv' || ext === 'txt' ? reader.readAsText(file, 'UTF-8') : reader.readAsArrayBuffer(file);
 }
 
-// Lee un .zip sin librerías: devuelve el primer XLSX/XLS/CSV/TXT { name, data:Uint8Array } o null
-async function unzipFirst(buf) {
+// Lee un .zip sin librerías: devuelve todos sus XLSX/XLS/CSV/TXT como [{ name, data:Uint8Array }]
+async function unzipAll(buf) {
+  const found = [];
   const dv = new DataView(buf), u8 = new Uint8Array(buf);
   let eocd = -1;
   for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) { if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
-  if (eocd < 0) return null;
+  if (eocd < 0) return found;
   const count = dv.getUint16(eocd + 10, true);
   let p = dv.getUint32(eocd + 16, true);
   for (let n = 0; n < count && dv.getUint32(p, true) === 0x02014b50; n++) {
@@ -1254,9 +1259,49 @@ async function unzipFirst(buf) {
     if (method === 0) data = comp;
     else if (method === 8) data = new Uint8Array(await new Response(new Blob([comp]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
     else continue;
-    return { name: name.split('/').pop(), data };
+    found.push({ name: name.split('/').pop(), data });
   }
-  return null;
+  return found;
+}
+
+// Primera hoja con datos de un XLSX/XLS/CSV/TXT, como matriz de filas
+function fileToRows(name, data) {
+  if (/\.(csv|txt)$/i.test(name)) return csvToRows(new TextDecoder('utf-8').decode(data));
+  const wb = XLSX.read(data, { type:'array', cellDates:false });
+  for (const n of wb.SheetNames) {
+    const r = XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'' });
+    if (r.length >= 2) return r;
+  }
+  return [];
+}
+
+// ZIP con varios archivos (ej. uno por proveedor): los une en una sola tabla.
+// Cada archivo puede traer sus columnas en distinto orden o columnas extra; se unen por nombre de encabezado
+// y se agrega la columna "Archivo ZIP" con el archivo de origen de cada fila.
+function mergeZipFiles(files, zipName) {
+  const headers = [], keyIdx = {}, merged = [];
+  const parts = [];
+  files.forEach(f => {
+    const rows = fileToRows(f.name, f.data);
+    if (rows.length < 2) return;
+    const hi = headerIndex(rows);
+    const hs = rows[hi].map(h => String(h).trim());
+    hs.forEach(h => { const k = normalize(h); if (k && !(k in keyIdx)) { keyIdx[k] = headers.length; headers.push(h); } });
+    parts.push({ name: f.name.replace(/\.[^.]+$/, ''), hs, data: rows.slice(hi + 1) });
+  });
+  if (!parts.length) { showToast('El ZIP no tiene archivos con datos.', 'warn'); return; }
+  parts.forEach(p => {
+    p.data.forEach(r => {
+      if (!r.some(c => String(c).trim() !== '')) return;
+      const row = new Array(headers.length + 1).fill('');
+      p.hs.forEach((h, i) => { const k = normalize(h); if (k) row[keyIdx[k]] = r[i] ?? ''; });
+      row[headers.length] = p.name;
+      merged.push(row);
+    });
+  });
+  fileName = zipName;
+  setTable([[...headers, 'Archivo ZIP'], ...merged]);
+  showToast(`ZIP con ${parts.length} archivos: se unieron ${merged.length.toLocaleString()} filas.`, 'ok');
 }
 
 // CSV con comillas (campos con comas y saltos de línea, como los de Shopify)
@@ -1300,6 +1345,20 @@ function shopifyToTable(rows) {
 // Define encabezados y datos. Si los encabezados reales no están en la fila 1
 // (p. ej. fila 1 con códigos internos y fila 2 con los nombres), usa la fila de las
 // primeras 10 que más se parezca a los campos del importador actual.
+function headerIndex(rows) {
+  const imp = IMPORTERS[currentImporter];
+  const dets = imp.fields.flatMap(f => f.detect.map(normalize));
+  const score = r => r.filter(c => {
+    const hn = normalize(c);
+    return hn && dets.some(d => hn === d || hn.includes(d));
+  }).length;
+  let hi = 0, best = score(rows[0] || []);
+  rows.slice(0, 10).forEach((r, i) => { const sc = score(r); if (sc > best) { best = sc; hi = i; } });
+  // Ningún encabezado se parece al importador: usa la primera fila con al menos 2 celdas llenas (evita filas vacías al inicio)
+  if (best === 0) { const f = rows.slice(0, 10).findIndex(r => r.filter(c => String(c).trim() !== '').length >= 2); if (f > 0) hi = f; }
+  return hi;
+}
+
 function setTable(rows) {
   const imp = IMPORTERS[currentImporter];
   shopifySource = false;
@@ -1311,13 +1370,7 @@ function setTable(rows) {
       showToast(`Formato Shopify reconocido: ${s.kept.toLocaleString()} variantes con SKU (se omitieron ${(s.total - s.kept).toLocaleString()} filas sin SKU, como las de imágenes).`, 'ok');
     }
   }
-  const dets = imp.fields.flatMap(f => f.detect.map(normalize));
-  const score = r => r.filter(c => {
-    const hn = normalize(c);
-    return hn && dets.some(d => hn === d || hn.includes(d));
-  }).length;
-  let hi = 0, best = score(rows[0] || []);
-  rows.slice(0, 10).forEach((r, i) => { const sc = score(r); if (sc > best) { best = sc; hi = i; } });
+  const hi = headerIndex(rows);
   rawHeaders = rows[hi].map(h => String(h).trim());
   // Plantilla Defontana con fila de grupos ("Información", "Venta", "Contacto"...) sobre los encabezados:
   // las columnas bajo "Contacto" (Nombre, Dirección, Comuna...) repiten nombres del cliente; se renombran "X del Contacto"
@@ -1381,9 +1434,11 @@ function cleanCSVCell(c) {
   return m ? m[1] : c;
 }
 
-function parseCSV(text) {
+function parseCSV(text) { setTable(csvToRows(text)); }
+
+function csvToRows(text) {
   text = text.replace(/^﻿/, '');
-  if (isShopifyHeader(text.split(/\r?\n/, 1)[0].split(','))) { setTable(parseCSVQuoted(text, ',')); return; }
+  if (isShopifyHeader(text.split(/\r?\n/, 1)[0].split(','))) return parseCSVQuoted(text, ',');
   const delimiters = [',',';','\t','|'];
   let best = ','; let max = 0;
   delimiters.forEach(d => {
@@ -1391,7 +1446,7 @@ function parseCSV(text) {
     if (c > max) { max = c; best = d; }
   });
   const lines = text.trim().split(/\r?\n/);
-  setTable(lines.filter(Boolean).map(l => l.split(best).map(cleanCSVCell)));
+  return lines.filter(Boolean).map(l => l.split(best).map(cleanCSVCell));
 }
 
 function onFileParsed() {
