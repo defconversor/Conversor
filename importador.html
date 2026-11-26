@@ -439,8 +439,9 @@
           <span class="fmt-tag">XLS</span>
           <span class="fmt-tag">CSV</span>
           <span class="fmt-tag">TXT</span>
+          <span class="fmt-tag">ZIP</span>
         </div>
-        <input type="file" id="file-input" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="handleFile(event)">
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv,.txt,.zip" style="display:none" onchange="handleFile(event)">
       </div>
       <div id="cat-box" style="margin-top:12px;font-size:13px;color:var(--gray-600,#4b5563)">
         <button type="button" class="btn-upload" style="padding:6px 12px;font-size:13px" onclick="document.getElementById('cat-input').click()">Cargar categorías de Defontana</button>
@@ -583,7 +584,7 @@ const IMPORTERS = {
     dedupKey: null,
     fields: [
       { key:'id_articulo',    label:'Código artículo',         req:true,  def:'',     detect:['codigo','sku','item','identificador','cod','code','ref','referencia','part','id'], cleanCode:true },
-      { key:'descripcion',    label:'Descripción artículo',    req:true,  def:'',     detect:['descripcion','nombre','glosa','detalle','name','desc','producto','articulo'], cleanSlash:true, cleanSemicolon:true, cleanText:true, maxLen:100 },
+      { key:'descripcion',    label:'Descripción artículo',    req:true,  def:'',     detect:['descripcion','nombre','glosa','detalle','name','desc','producto','articulo','title','titulo'], cleanSlash:true, cleanSemicolon:true, cleanText:true, maxLen:100 },
       { key:'precio_venta',   label:'Precio de venta',         req:false, def:'',     detect:['precio','valor','pvp','price','venta','sale','precio_venta'], type:'price' },
       { key:'costo',          label:'Costo de reposición',     req:false, def:'',     detect:['costo','cost','costo_repos','precio_costo','precio_compra','compra'], type:'price' },
       { key:'unidad_inv',     label:'Unidad medida inv.',      req:false, def:'UN',   detect:['unidad','um','medida','unit','uom'], type:'um' },
@@ -1059,7 +1060,7 @@ const IMPORTERS = {
       { key:'articulo',   label:'Artículo (Código)',  req:true,  def:'',  detect:['articulo','codigo','sku','cod_articulo','item','producto','code'], cleanCode:true },
       { key:'cantidad',   label:'Cantidad',           req:true,  def:'',  detect:['cantidad','qty','quantity','cant','stock'], type:'num_dec' },
       { key:'precio',     label:'Precio / Costo',     req:true,  def:'',  detect:['costo','cost','precio','price','valor'], type:'price' },
-      { key:'glosa',      label:'Glosa',              req:false, def:'',  detect:['glosa','descripcion','description','detalle'], cleanSlash:true },
+      { key:'glosa',      label:'Glosa',              req:false, def:'',  detect:['glosa','descripcion','description','detalle','title','titulo'], cleanSlash:true },
       { key:'comentario', label:'Comentario',         req:false, def:'',  detect:['comentario','observacion','comment','nota'] },
       { key:'bod_origen', label:'Bodega origen',      req:false, def:'',  detect:['bodega_origen','bod_origen','origen'] },
     ],
@@ -1096,6 +1097,7 @@ let convertedWarns = [];
 let userDefaults = {};
 let extraMappings = {};
 let fileName = '';
+let shopifySource = false;   // el archivo cargado es una exportación de Shopify
 
 // ─── IMPORTER SWITCH ────────────────────────────────────────
 function switchImporter(key) {
@@ -1106,11 +1108,8 @@ function switchImporter(key) {
 
   // Update accept & fmt tags
   const fmtTags = document.getElementById('fmt-tags');
-  const isInv = key === 'inventario';
-  document.getElementById('file-input').accept = isInv ? '.xlsx' : '.xlsx,.xls,.csv,.txt';
-  fmtTags.innerHTML = isInv
-    ? '<span class="fmt-tag">XLSX</span>'
-    : '<span class="fmt-tag">XLSX</span><span class="fmt-tag">XLS</span><span class="fmt-tag">CSV</span><span class="fmt-tag">TXT</span>';
+  document.getElementById('file-input').accept = '.xlsx,.xls,.csv,.txt,.zip';
+  fmtTags.innerHTML = '<span class="fmt-tag">XLSX</span><span class="fmt-tag">XLS</span><span class="fmt-tag">CSV</span><span class="fmt-tag">TXT</span><span class="fmt-tag">ZIP</span>';
 
   document.getElementById('cat-box').classList.toggle('hidden', key !== 'articulos');
   resetAll();
@@ -1191,7 +1190,7 @@ function resolveCategory(val) {
 
 function resetAll() {
   rawData = []; rawHeaders = []; convertedValid = []; convertedErrors = []; convertedWarns = [];
-  userDefaults = {}; extraMappings = {}; fileName = '';
+  userDefaults = {}; extraMappings = {}; fileName = ''; shopifySource = false;
   document.getElementById('upload-btn-wrap').classList.remove('hidden');
   document.getElementById('file-bar').classList.add('hidden');
   document.getElementById('mapping-section').classList.add('hidden');
@@ -1213,13 +1212,89 @@ function handleFile(event) {
   if (!file) return;
   if (file.size > 25 * 1024 * 1024) { showToast('El archivo supera el máximo de 25 MB.', 'warn'); return; }
   const ext = file.name.split('.').pop().toLowerCase();
-  const allowed = currentImporter === 'inventario' ? ['xlsx'] : ['xlsx','xls','csv','txt'];
+  const allowed = ['xlsx','xls','csv','txt','zip'];
   if (!allowed.includes(ext)) { showToast(`Formato no permitido. Acepta: ${allowed.join(', ').toUpperCase()}`, 'warn'); return; }
   fileName = file.name;
   trackEvent('carga-' + currentImporter);
   const reader = new FileReader();
-  reader.onload = e => { ext === 'csv' || ext === 'txt' ? parseCSV(e.target.result) : parseExcel(e.target.result); };
+  reader.onload = async e => {
+    try {
+      if (ext === 'zip') {
+        const inner = await unzipFirst(e.target.result);
+        if (!inner) { showToast('El ZIP no contiene un archivo XLSX, XLS, CSV o TXT.', 'warn'); return; }
+        fileName = inner.name;
+        const iext = inner.name.split('.').pop().toLowerCase();
+        iext === 'csv' || iext === 'txt' ? parseCSV(new TextDecoder('utf-8').decode(inner.data)) : parseExcel(inner.data);
+      } else {
+        ext === 'csv' || ext === 'txt' ? parseCSV(e.target.result) : parseExcel(e.target.result);
+      }
+    } catch (_) { showToast('Error al leer el archivo.', 'warn'); }
+  };
   ext === 'csv' || ext === 'txt' ? reader.readAsText(file, 'UTF-8') : reader.readAsArrayBuffer(file);
+}
+
+// Lee un .zip sin librerías: devuelve el primer XLSX/XLS/CSV/TXT { name, data:Uint8Array } o null
+async function unzipFirst(buf) {
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  let eocd = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) { if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
+  if (eocd < 0) return null;
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  for (let n = 0; n < count && dv.getUint32(p, true) === 0x02014b50; n++) {
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    const lho = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl));
+    p += 46 + nl + el + cl;
+    if (name.endsWith('/') || name.startsWith('__MACOSX') || !/\.(xlsx|xls|csv|txt)$/i.test(name)) continue;
+    const start = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true);
+    const comp = u8.subarray(start, start + csize);
+    let data;
+    if (method === 0) data = comp;
+    else if (method === 8) data = new Uint8Array(await new Response(new Blob([comp]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    else continue;
+    return { name: name.split('/').pop(), data };
+  }
+  return null;
+}
+
+// CSV con comillas (campos con comas y saltos de línea, como los de Shopify)
+function parseCSVQuoted(text, d) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === d) { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(c => c !== ''));
+}
+
+// Exportación de productos de Shopify (Handle + Variant SKU): una fila por variante, más filas extra solo con imágenes
+function isShopifyHeader(r) { const h = (r || []).map(normalize); return h.includes('handle') && h.includes('variantsku'); }
+
+function shopifyToTable(rows) {
+  const hn = rows[0].map(normalize);
+  const ix = n => hn.indexOf(normalize(n));
+  const iH = ix('Handle'), iT = ix('Title'), iS = ix('Variant SKU'), iQ = ix('Variant Inventory Qty'),
+        iP = ix('Variant Price'), iC = ix('Cost per item'), iB = ix('Variant Barcodes');
+  const opts = [1, 2, 3].map(n => [ix(`Option${n} Name`), ix(`Option${n} Value`)]);
+  const get = (r, i) => i >= 0 ? String(r[i] ?? '').trim() : '';
+  const titles = {};
+  rows.slice(1).forEach(r => { const h = get(r, iH), t = get(r, iT); if (h && t && !titles[h]) titles[h] = t; });
+  const body = rows.slice(1).filter(r => get(r, iS));
+  const hasCost = body.some(r => get(r, iC)), hasBar = body.some(r => get(r, iB));
+  const headers = ['Variant SKU', 'Title', 'Variant Inventory Qty', 'Variant Price', ...(hasCost ? ['Cost per item'] : []), ...(hasBar ? ['Variant Barcodes'] : [])];
+  const out = body.map(r => {
+    const vals = opts.filter(([n, v]) => get(r, n) && normalize(get(r, n)) !== 'title' && get(r, v) && normalize(get(r, v)) !== 'defaulttitle').map(([, v]) => get(r, v));
+    const title = (get(r, iT) || titles[get(r, iH)] || get(r, iH)) + (vals.length ? ' - ' + vals.join(' / ') : '');
+    return [get(r, iS), title, get(r, iQ), get(r, iP), ...(hasCost ? [get(r, iC)] : []), ...(hasBar ? [get(r, iB)] : [])];
+  });
+  return { rows: [headers, ...out], total: rows.length - 1, kept: body.length };
 }
 
 // Define encabezados y datos. Si los encabezados reales no están en la fila 1
@@ -1227,6 +1302,15 @@ function handleFile(event) {
 // primeras 10 que más se parezca a los campos del importador actual.
 function setTable(rows) {
   const imp = IMPORTERS[currentImporter];
+  shopifySource = false;
+  if (isShopifyHeader(rows[0])) {
+    const s = shopifyToTable(rows);
+    if (s.kept) {
+      shopifySource = true;
+      rows = s.rows;
+      showToast(`Formato Shopify reconocido: ${s.kept.toLocaleString()} variantes con SKU (se omitieron ${(s.total - s.kept).toLocaleString()} filas sin SKU, como las de imágenes).`, 'ok');
+    }
+  }
   const dets = imp.fields.flatMap(f => f.detect.map(normalize));
   const score = r => r.filter(c => {
     const hn = normalize(c);
@@ -1298,6 +1382,8 @@ function cleanCSVCell(c) {
 }
 
 function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  if (isShopifyHeader(text.split(/\r?\n/, 1)[0].split(','))) { setTable(parseCSVQuoted(text, ',')); return; }
   const delimiters = [',',';','\t','|'];
   let best = ','; let max = 0;
   delimiters.forEach(d => {
@@ -1797,10 +1883,12 @@ function convertFile() {
     if (currentImporter === 'clientes' && out.monto_credito && !out.monto_morosidad) {
       out.monto_morosidad = out.monto_credito;
     }
-    if (imp.dedupKey) {
+    // Shopify puede repetir un SKU en productos distintos: se conserva el primero y los demás se informan como duplicados
+    const dedupKey = imp.dedupKey || (shopifySource ? (isInv ? 'articulo' : currentImporter === 'articulos' ? 'id_articulo' : null) : null);
+    if (dedupKey) {
       // Duplicado = mismo código (ID) Y mismo código legal. Extranjeros con RUT genérico (55.555.555-5) pero ID distinto son clientes distintos.
       const idKey = currentImporter === 'clientes' ? 'cod_cliente' : currentImporter === 'proveedores' ? 'cod_proveedor' : null;
-      const k = out[imp.dedupKey];
+      const k = out[dedupKey];
       const full = k ? (idKey ? `${out[idKey] || ''}|${k}` : k) : '';
       if (full && seenKeys.has(full)) {
         errors.push({ row: idx+2, data: out, errs: [`Código duplicado: ${idKey && out[idKey] !== k ? out[idKey] + ' / ' : ''}${k} — omitido`], isDup: true });
@@ -2618,6 +2706,7 @@ function doDownloadTXT() {
   const blob = new Blob([lines], { type:'text/plain;charset=utf-8' });
   trigger(blob, outName('_defontana.txt'));
   trackEvent('descarga-txt-' + currentImporter);
+  askErpSurvey();
 }
 
 function doDownloadXLS() {
@@ -2630,6 +2719,7 @@ function doDownloadXLS() {
   const isSimple2 = currentImporter === 'simple';
   XLSX.writeFile(wb, outName('_defontana.' + (isInv2 || isSimple2 ? 'xlsx' : 'xls')), { bookType: (isInv2 || isSimple2) ? 'xlsx' : 'xls' });
   trackEvent('descarga-excel-' + currentImporter);
+  askErpSurvey();
 }
 
 function doDownloadErrors() {
@@ -2661,6 +2751,62 @@ function trackEvent(name) {
     }
   } catch (_) {}
 }
+
+// ─── ENCUESTA: ¿LOGRASTE SUBIRLO AL ERP? ─────────────────────
+// Tarjeta no bloqueante tras descargar. Solo registra eventos agregados (ej. "erp-ok-articulos",
+// "erp-error-articulos-formato"); no guarda texto libre, nombres de archivo ni datos.
+const SURVEY_KEY = 'defconv-erp-pending';
+let surveyAskedFor = '';
+
+function surveyStore(v) {
+  try { v ? localStorage.setItem(SURVEY_KEY, v) : localStorage.removeItem(SURVEY_KEY); } catch (_) {}
+}
+
+function askErpSurvey(importer) {
+  const imp = importer || currentImporter;
+  if (!importer) {
+    // Una sola vez por archivo convertido
+    const id = imp + '|' + fileName;
+    if (surveyAskedFor === id) return;
+    surveyAskedFor = id;
+  }
+  document.getElementById('erp-survey')?.remove();
+  surveyStore(imp);
+
+  const card = document.createElement('div');
+  card.id = 'erp-survey';
+  card.style.cssText = 'position:fixed;bottom:24px;left:24px;z-index:9998;width:300px;padding:16px;border-radius:10px;background:#fff;border:1px solid #C5D4E5;box-shadow:0 4px 16px rgba(0,0,0,.14);font-family:var(--font);font-size:13px;color:#1A3A5C;animation:fadeIn .2s ease;';
+  const btn = (label, primary) => `<button type="button" style="display:block;width:100%;text-align:left;margin-top:6px;padding:8px 10px;border-radius:7px;cursor:pointer;font:inherit;border:1px solid ${primary ? '#1A3A5C' : '#d1d5db'};background:${primary ? '#1A3A5C' : '#fff'};color:${primary ? '#fff' : '#1f2937'}">${label}</button>`;
+  const close = () => card.remove();
+  const thanks = msg => {
+    surveyStore('');
+    card.innerHTML = `<div style="font-weight:600">${msg}</div>`;
+    setTimeout(close, 2500);
+  };
+  const ask = (title, options) => {
+    card.innerHTML = `<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="font-weight:600;line-height:1.35">${title}</div><button type="button" aria-label="Cerrar" data-x style="border:0;background:none;cursor:pointer;font-size:16px;line-height:1;color:#6b7280">×</button></div>` + options.map((o, i) => btn(o[0], i === 0)).join('');
+    card.querySelector('[data-x]').onclick = close; // queda pendiente: se vuelve a preguntar en la próxima visita
+    card.querySelectorAll('button:not([data-x])').forEach((b, i) => b.onclick = options[i][1]);
+  };
+
+  const askError = () => ask('¿Qué pasó al subirlo?', [
+    ['El ERP rechazó el formato o las columnas', () => { trackEvent('erp-error-' + imp + '-formato'); thanks('Gracias, lo revisaremos.'); }],
+    ['Error en algunos datos (códigos, precios…)', () => { trackEvent('erp-error-' + imp + '-datos'); thanks('Gracias, lo revisaremos.'); }],
+    ['Otro problema', () => { trackEvent('erp-error-' + imp + '-otro'); thanks('Gracias, lo revisaremos.'); }],
+  ]);
+
+  ask('¿Lograste subirlo al ERP?', [
+    ['Sí, se cargó sin problemas', () => { trackEvent('erp-ok-' + imp); thanks('¡Gracias por avisar!'); }],
+    ['No, tuve errores', () => { trackEvent('erp-error-' + imp); askError(); }],
+    ['Aún no lo subo', close], // queda pendiente: se vuelve a preguntar en la próxima visita
+  ]);
+  document.body.appendChild(card);
+}
+
+// Si quedó una encuesta sin responder de una visita anterior, la vuelve a mostrar
+window.addEventListener('load', () => {
+  try { const p = localStorage.getItem(SURVEY_KEY); if (p && IMPORTERS[p]) setTimeout(() => askErpSurvey(p), 1500); } catch (_) {}
+});
 
 function trigger(blob, name) {
   const a = document.createElement('a');
