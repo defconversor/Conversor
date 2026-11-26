@@ -522,7 +522,7 @@
         <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
           <span>Prefijo <input id="corr-prefix" value="ART" maxlength="10" style="width:80px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font:inherit"></span>
           <span>Desde <input id="corr-start" type="number" min="1" value="1" style="width:90px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font:inherit"></span>
-          <span style="color:var(--gray-500,#6b7280)">Ej.: ART000001. Los códigos que ya existen en el archivo no se repiten.</span>
+          <span style="color:var(--gray-500,#6b7280)">Ej.: ART000001 (sin prefijo: 1, 2, 3…). Los códigos que ya existen en el archivo no se repiten.</span>
         </div>
       </div>
       <div class="fields-grid" id="fields-grid"></div>
@@ -1542,6 +1542,11 @@ function autoDetect() {
     autoMapping[field.key] = best;
     if (best !== '__none__') used.add(best);
   });
+  // Artículos sin columna de código: el código de barra hace de código del artículo (los vacíos se completan con el correlativo)
+  if (currentImporter === 'articulos' && autoMapping.id_articulo === '__none__') {
+    const bar = heads.find(x => /barra|barcode/.test(x.hn));
+    if (bar) autoMapping.id_articulo = bar.h;
+  }
 }
 
 function toggleMoreMenu(e) {
@@ -1582,7 +1587,10 @@ function renderMappingFields() {
   document.getElementById('btn-pair-all').textContent = showAdvanced ? 'Ocultar columnas adicionales' : 'Parear todas las columnas';
   // Correlativo para artículos sin código: se activa solo si el archivo no trae columna de código
   document.getElementById('corr-box').classList.toggle('hidden', currentImporter !== 'articulos');
-  document.getElementById('corr-on').checked = currentImporter === 'articulos' && autoMapping.id_articulo === '__none__';
+  // Se marca si no hay columna de código o si la columna mapeada trae filas vacías
+  const idCol = rawHeaders.indexOf(autoMapping.id_articulo);
+  document.getElementById('corr-on').checked = currentImporter === 'articulos' &&
+    (idCol < 0 || rawData.some(r => String(r[idCol] ?? '').trim() === ''));
 
   imp.fields.forEach(field => {
     if (field.advanced && !showAdvanced && !(field.key === 'cod_cat' && (catActive() || autoMapping.cod_cat !== '__none__'))) return;
@@ -1854,14 +1862,14 @@ function convertFile() {
   const imp = IMPORTERS[currentImporter];
   // Correlativo: los artículos sin código reciben PREFIJO + número (se salta los códigos que ya trae el archivo)
   const corr = currentImporter === 'articulos' && document.getElementById('corr-on').checked;
-  const corrPre = (document.getElementById('corr-prefix').value || 'ART').trim().replace(/[^A-Za-z0-9_-]/g, '');
+  const corrPre = document.getElementById('corr-prefix').value.trim().replace(/[^A-Za-z0-9_-]/g, '');   // puede ir vacío
   let corrN = Math.max(1, parseInt(document.getElementById('corr-start').value) || 1);
   const usedCodes = new Set();
   if (corr && currentMapping.id_articulo && currentMapping.id_articulo !== '__none__') {
     const ci = rawHeaders.indexOf(currentMapping.id_articulo);
     rawData.forEach(r => { const v = String(r[ci] ?? '').trim(); if (v) usedCodes.add(v); });
   }
-  const nextCode = () => { let c; do { c = corrPre + String(corrN++).padStart(6, '0'); } while (usedCodes.has(c)); usedCodes.add(c); return c; };
+  const nextCode = () => { let c; do { c = corrPre + (corrPre ? String(corrN++).padStart(6, '0') : String(corrN++)); } while (usedCodes.has(c)); usedCodes.add(c); return c; };
   const missingReq = imp.fields.filter(f => f.req && !(corr && f.key === 'id_articulo') && (!currentMapping[f.key] || currentMapping[f.key] === '__none__') && (!defaults[f.key] || !defaults[f.key].trim()));
   if (missingReq.length > 0) { showToast(`Campos obligatorios sin mapear ni default: ${missingReq.map(f=>f.label).join(', ')}`, 'warn'); return; }
 
