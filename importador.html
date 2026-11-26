@@ -515,6 +515,16 @@
           <button id="btn-pair-all" onclick="toggleAdvancedFields()">Parear todas las columnas</button>
         </div>
       </div>
+      <div id="corr-box" class="hidden" style="margin:0 0 14px;padding:12px 14px;border:1px solid var(--gray-200,#e5e7eb);border-radius:8px;background:#fff;font-size:13px;color:var(--gray-600,#4b5563)">
+        <label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:600;color:var(--gray-800,#1f2937)">
+          <input type="checkbox" id="corr-on"> Asignar un correlativo a los artículos sin código
+        </label>
+        <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <span>Prefijo <input id="corr-prefix" value="ART" maxlength="10" style="width:80px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font:inherit"></span>
+          <span>Desde <input id="corr-start" type="number" min="1" value="1" style="width:90px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font:inherit"></span>
+          <span style="color:var(--gray-500,#6b7280)">Ej.: ART000001. Los códigos que ya existen en el archivo no se repiten.</span>
+        </div>
+      </div>
       <div class="fields-grid" id="fields-grid"></div>
 
       <!-- Extra columns -->
@@ -644,7 +654,7 @@ const IMPORTERS = {
       { key:'prop23', label:'Valor propiedad 23', req:false, advanced:true, def:'', detect:['valor_propiedad_23'], exact:true },
       { key:'prop24', label:'Valor propiedad 24', req:false, advanced:true, def:'', detect:['valor_propiedad_24'], exact:true },
       { key:'prop25', label:'Valor propiedad 25', req:false, advanced:true, def:'', detect:['valor_propiedad_25'], exact:true },
-      { key:'cod_cat', label:'Código categoría', req:false, advanced:true, def:'', detect:['codigo_categoria','cod_categoria','categoria'], exact:true },
+      { key:'cod_cat', label:'Código categoría', req:false, advanced:true, def:'', detect:['codigo_categoria','cod_categoria','categoria','familia_id','familia'], exact:true },
       { key:'tipo_exist', label:'Tipo de Existencia', req:false, advanced:true, def:'', detect:['tipo_de_existencia'], exact:true },
       { key:'cod_sunat', label:'Código Artículo SUNAT', req:false, advanced:true, def:'', detect:['codigo_articulo_sunat'], exact:true },
     ],
@@ -1498,12 +1508,16 @@ function autoDetect() {
   const used = new Set();
   const heads = rawHeaders.map(h => ({ h, hn: normalize(h) }));
   imp.fields.forEach(field => {
-    if (field.advanced && !showAdvanced && !(field.key === 'cod_cat' && catActive())) { autoMapping[field.key] = '__none__'; return; }
+    // Código categoría se parea solo si hay categorías cargadas o el archivo trae una columna con ese nombre exacto (ej. FAMILIA_ID)
+    const catByHeader = field.key === 'cod_cat' && heads.some(x => ['codigocategoria','codcategoria','familiaid','familia'].includes(x.hn));
+    if (field.advanced && !showAdvanced && !(field.key === 'cod_cat' && (catActive() || catByHeader))) { autoMapping[field.key] = '__none__'; return; }
     const dets = field.detect.map(normalize);
     // Los campos de código/nombre no deben tomar columnas de código/identificador genérico
     const skip = (field.key === 'descripcion' || field.key === 'nombre')
       ? (hn => ['codigo','sku','identificador','cod','code','ref','id','rut'].some(b => hn === b || hn.startsWith(b)))
-      : (() => false);
+      : field.key === 'id_articulo'
+        ? (hn => /barra|barcode|^ean|familia|categ/.test(hn))   // código de barra y familia/categoría no son el código del artículo
+        : (() => false);
     // Código cliente/proveedor y código legal son el mismo RUT: pueden compartir columna
     const canShare = field.key === 'cod_legal' || field.key === 'cod_cliente' || field.key === 'cod_proveedor';
     // Campos numéricos (precio, costo, cantidad, stock): descartar columnas cuyo contenido es texto
@@ -1566,9 +1580,12 @@ function renderMappingFields() {
   document.getElementById('more-options').classList.toggle('hidden', !hasAdv);
   document.getElementById('more-menu').classList.add('hidden');
   document.getElementById('btn-pair-all').textContent = showAdvanced ? 'Ocultar columnas adicionales' : 'Parear todas las columnas';
+  // Correlativo para artículos sin código: se activa solo si el archivo no trae columna de código
+  document.getElementById('corr-box').classList.toggle('hidden', currentImporter !== 'articulos');
+  document.getElementById('corr-on').checked = currentImporter === 'articulos' && autoMapping.id_articulo === '__none__';
 
   imp.fields.forEach(field => {
-    if (field.advanced && !showAdvanced && !(field.key === 'cod_cat' && catActive())) return;
+    if (field.advanced && !showAdvanced && !(field.key === 'cod_cat' && (catActive() || autoMapping.cod_cat !== '__none__'))) return;
     const isAuto = autoMapping[field.key] !== '__none__';
     const card = document.createElement('div');
     card.className = 'field-card';
@@ -1835,7 +1852,17 @@ function convertFile() {
   });
 
   const imp = IMPORTERS[currentImporter];
-  const missingReq = imp.fields.filter(f => f.req && (!currentMapping[f.key] || currentMapping[f.key] === '__none__') && (!defaults[f.key] || !defaults[f.key].trim()));
+  // Correlativo: los artículos sin código reciben PREFIJO + número (se salta los códigos que ya trae el archivo)
+  const corr = currentImporter === 'articulos' && document.getElementById('corr-on').checked;
+  const corrPre = (document.getElementById('corr-prefix').value || 'ART').trim().replace(/[^A-Za-z0-9_-]/g, '');
+  let corrN = Math.max(1, parseInt(document.getElementById('corr-start').value) || 1);
+  const usedCodes = new Set();
+  if (corr && currentMapping.id_articulo && currentMapping.id_articulo !== '__none__') {
+    const ci = rawHeaders.indexOf(currentMapping.id_articulo);
+    rawData.forEach(r => { const v = String(r[ci] ?? '').trim(); if (v) usedCodes.add(v); });
+  }
+  const nextCode = () => { let c; do { c = corrPre + String(corrN++).padStart(6, '0'); } while (usedCodes.has(c)); usedCodes.add(c); return c; };
+  const missingReq = imp.fields.filter(f => f.req && !(corr && f.key === 'id_articulo') && (!currentMapping[f.key] || currentMapping[f.key] === '__none__') && (!defaults[f.key] || !defaults[f.key].trim()));
   if (missingReq.length > 0) { showToast(`Campos obligatorios sin mapear ni default: ${missingReq.map(f=>f.label).join(', ')}`, 'warn'); return; }
 
   const headerIdx = {};
@@ -1871,6 +1898,7 @@ function convertFile() {
       const fld = (currentImporter === 'clientes' && field.key === 'cod_cliente' && colName && colName !== currentMapping.cod_legal
         && !/-/.test(String(rawVal ?? ''))) ? { ...field, type: undefined } : field;
       let val = transformValue(rawVal, fld, defaults);
+      if (corr && field.key === 'id_articulo' && !val.trim()) val = nextCode();
       if (field.req && !val.trim()) rowErrs.push(`Campo obligatorio vacío: "${field.label}"`);
       out[field.key] = val;
     });
