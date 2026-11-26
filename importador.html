@@ -1878,6 +1878,7 @@ function convertFile() {
 
   const today = getTodayStr();
   const seenKeys = new Set();
+  const firstSeen = {};   // código → { row, qty } de la fila conservada
   const valid = [], errors = [], warns = [];
   // Sin columna de stock máximo: el stock mínimo se ignora (Defontana exige máx ≥ mín) y se avisa una sola vez
   const stockMaxMapped = !!currentMapping.stock_max && currentMapping.stock_max !== '__none__';
@@ -1981,11 +1982,18 @@ function convertFile() {
       const idKey = currentImporter === 'clientes' ? 'cod_cliente' : currentImporter === 'proveedores' ? 'cod_proveedor' : null;
       const k = out[dedupKey];
       const full = k ? (idKey ? `${out[idKey] || ''}|${k}` : k) : '';
-      if (full && seenKeys.has(full)) {
-        errors.push({ row: idx+2, data: out, errs: [`Código duplicado: ${idKey && out[idKey] !== k ? out[idKey] + ' / ' : ''}${k} — omitido`], isDup: true });
-        return;
+      // Las filas con errores no cuentan como "primera": si la primera ocurrencia es inválida (ej. cantidad 0), la siguiente válida se conserva
+      if (full && !rowErrs.length) {
+        if (seenKeys.has(full)) {
+          const f = firstSeen[full] || {};
+          const kept = f.row ? ` (se conservó la fila ${f.row}${isInv ? `, cantidad ${f.qty}` : ''})` : '';
+          errors.push({ row: idx+2, data: out, errs: [`Código duplicado: ${idKey && out[idKey] !== k ? out[idKey] + ' / ' : ''}${k} — omitido${kept}`], isDup: true,
+            dup: { code: k, desc: out.glosa || out.descripcion || '', qty: out.cantidad ?? '', price: out.precio ?? out.precio_venta ?? '', keptRow: f.row || '', keptQty: f.qty ?? '' } });
+          return;
+        }
+        seenKeys.add(full);
+        firstSeen[full] = { row: idx+2, qty: out.cantidad ?? '' };
       }
-      if (full) seenKeys.add(full);
     }
 
     // Build output row
@@ -2145,7 +2153,7 @@ function renderResult() {
   const alertsEl = document.getElementById('result-alerts');
   let alerts = '';
   if (validCount === 0) alerts += `<div class="inline-alert warn">⚠️ No hay registros válidos. Revisa el mapeo de campos.</div>`;
-  if (dupCount > 0) alerts += `<div class="inline-alert info">ℹ️ ${dupCount} registro${dupCount > 1?'s':''} con RUT duplicado fueron omitidos.</div>`;
+  if (dupCount > 0) alerts += `<div class="inline-alert info">ℹ️ ${dupCount} registro${dupCount > 1?'s':''} con ${currentImporter === 'inventario' || currentImporter === 'articulos' ? 'código' : 'RUT'} duplicado ${dupCount > 1?'fueron omitidos':'fue omitido'}.${convertedErrors.some(e => e.dup) ? ' Descarga el detalle para revisar cuál se conservó.' : ''}</div>`;
   alertsEl.innerHTML = alerts;
 
   // Preview headers
@@ -2206,6 +2214,13 @@ function renderResult() {
     <button class="btn-dl" onclick="doDownloadXLS()">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Descargar XLS Defontana
+    </button>`;
+  }
+  const dupDetail = convertedErrors.filter(e => e.dup).length;
+  if (dupDetail > 0) {
+    btns += `<button class="btn-dl" onclick="doDownloadDups()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Descargar duplicados (${dupDetail})
     </button>`;
   }
   if (convertedErrors.length > 0) {
@@ -2811,6 +2826,23 @@ function doDownloadXLS() {
   XLSX.writeFile(wb, outName('_defontana.' + (isInv2 || isSimple2 ? 'xlsx' : 'xls')), { bookType: (isInv2 || isSimple2) ? 'xlsx' : 'xls' });
   trackEvent('descarga-excel-' + currentImporter);
   askErpSurvey();
+}
+
+// Detalle de los códigos repetidos que se omitieron: qué fila se conservó y cuál se descartó, para decidir cuáles sí cargar
+function doDownloadDups() {
+  const dups = convertedErrors.filter(e => e.dup);
+  if (!dups.length) return;
+  const isInv = currentImporter === 'inventario';
+  const headers = ['Código', 'Descripción', ...(isInv ? ['Cantidad omitida'] : []), 'Precio', 'Fila omitida', 'Fila conservada', ...(isInv ? ['Cantidad conservada', 'Misma cantidad'] : [])];
+  const rows = dups.map(e => {
+    const d = e.dup;
+    return [d.code, d.desc, ...(isInv ? [d.qty] : []), d.price, e.row, d.keptRow, ...(isInv ? [d.keptQty, String(d.qty) === String(d.keptQty) ? 'Sí' : 'No'] : [])];
+  }).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Duplicados');
+  XLSX.writeFile(wb, outName('_duplicados.xlsx'));
+  trackEvent('descarga-duplicados-' + currentImporter);
 }
 
 function doDownloadErrors() {
